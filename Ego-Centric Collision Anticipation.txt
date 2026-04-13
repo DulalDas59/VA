@@ -1,0 +1,936 @@
+Ego-Centric Collision Anticipation - Label Schema and Benchmark Specification
+1. Purpose
+This document defines a label schema and benchmark specification for an enterprise-grade ego-centric collision anticipation system using vehicle-mounted front-camera video.
+It is designed so that the benchmark can be applied later to:
+•	customer-provided videos,
+•	public dashcam datasets,
+•	internal replay corpora,
+•	near-miss and risky-event mining pipelines,
+•	online advisory / warning evaluation.
+The benchmark is intentionally ego-centric:
+•	positive events should be defined with respect to the ego vehicle,
+•	non-ego accidents should not be treated as equivalent positives,
+•	hazard localization and warning timing are treated as first-class outputs.
+
+2. Benchmark Scope
+2.1 Primary task
+Predict whether the ego vehicle will collide or near-collide within future horizon (H), using front-camera egocentric video.
+2.2 Secondary tasks
+•	identify the primary hazard actor,
+•	estimate time-to-event,
+•	classify impact sector,
+•	produce explanation / reason code,
+•	localize the relevant collision / hazard region.
+2.3 Deployment modes supported
+•	offline event mining,
+•	offline benchmark evaluation,
+•	real-time advisory / warning evaluation,
+•	fleet safety analytics.
+
+3. Label Ontology
+3.1 Event-level labels
+Every benchmark clip or event window should receive one of the following primary labels:
+A. collision
+The ego vehicle is involved in physical impact with another actor or object.
+B. near_collision
+The ego vehicle enters a critical conflict state where collision is narrowly avoided or would be highly likely without evasive action.
+C. normal
+No critical ego-involved collision or near-collision occurs within the benchmark horizon.
+D. ambiguous
+Optional label used only for annotation review and exclusion. Use when event relevance is unclear or visibility is too poor for reliable ground truth.
+
+3.2 Ego relevance labels
+To prevent dataset leakage from irrelevant accidents, every event candidate should also be labeled for ego relevance.
+ego_involved
+•	yes
+•	no
+•	uncertain
+Rule
+Only clips with ego_involved = yes should count as positive for the primary collision-anticipation benchmark.
+3.3 Event severity labels
+Optional but recommended.
+severity
+•	collision_minor
+•	collision_moderate
+•	collision_severe
+•	near_collision_low
+•	near_collision_high
+Severity definitions should be customer- and business-aligned.
+
+3.4 Scenario type labels
+Each event or clip should receive one or more scenario labels.
+Suggested taxonomy
+•	rear_end
+•	cut_in_left
+•	cut_in_right
+•	cross_traffic
+•	side_swipe_left
+•	side_swipe_right
+•	stopped_vehicle_ahead
+•	pedestrian_intrusion
+•	cyclist_conflict
+•	motorcycle_conflict
+•	intersection_conflict
+•	merging_conflict
+•	lane_departure_conflict
+•	obstacle_in_lane
+•	multi_vehicle_chain
+•	unknown_conflict
+
+4. Temporal Label Schema
+Temporal supervision is essential for anticipation benchmarks.
+4.1 Clip-level temporal fields
+clip_start_ts
+Timestamp of clip start within trip or source video.
+clip_end_ts
+Timestamp of clip end.
+fps_nominal
+Nominal video frame rate.
+
+4.2 Event timing fields
+event_time
+Timestamp of actual collision or near-collision moment.
+event_start
+Timestamp when the dangerous event sequence begins.
+alert_time
+Earliest timestamp where a trained human annotator can reasonably identify the event as predictable.
+first_visible_hazard_time
+Timestamp when the hazard actor first becomes visible.
+hazard_commitment_time
+Optional label for when the event becomes strongly committed or difficult to avoid.
+
+4.3 Derived timing labels
+These can be computed from the above.
+tta_ms
+Time-to-accident / time-to-event at each frame or clip endpoint.
+predictable_horizon_ms
+event_time - alert_time
+visibility_horizon_ms
+event_time - first_visible_hazard_time
+
+5. Spatial Label Schema
+5.1 Hazard actor labels
+Each positive event should identify the primary hazard actor.
+hazard_actor_id
+Unique actor identifier for the main risk source.
+hazard_actor_class
+•	car
+•	truck
+•	bus
+•	motorcycle
+•	bicycle
+•	pedestrian
+•	barrier
+•	static_object
+•	animal
+•	unknown
+
+5.2 Bounding box / track labels
+For hazard-aware benchmarks, annotate:
+hazard_bbox
+Bounding box of primary hazard actor at key timestamps.
+hazard_track
+Track of hazard actor across the event window.
+secondary_actor_tracks
+Optional tracks for other involved actors.
+
+
+5.3 Impact localization labels
+impact_sector
+•	front_left
+•	front_center
+•	front_right
+•	left_side
+•	right_side
+•	rear_like
+•	unknown
+impact_region_bbox
+Optional image-space region where collision is expected or occurs.
+collision_point_visible
+•	yes
+•	no
+•	partially_visible
+
+6. Explanation and Cause Labels
+These labels make the benchmark more useful for enterprise products.
+reason_code
+Primary cause or risk explanation.
+Suggested taxonomy:
+•	lead_vehicle_brake
+•	rapid_closing_speed
+•	cut_in_left
+•	cut_in_right
+•	cross_traffic_entry
+•	unsafe_merge
+•	stopped_vehicle_ahead
+•	pedestrian_step_in
+•	cyclist_intrusion
+•	ego_lane_departure
+•	occluded_actor_emergence
+•	multi_actor_conflict
+•	unknown_reason
+
+preventive_action
+Optional.
+•	brake_earlier
+•	increase_headway
+•	yield
+•	maintain_lane
+•	reduce_speed
+•	improve_gap_selection
+•	no_clear_prevention
+
+7. Context Labels
+These support robust benchmarking and condition-wise analysis.
+Lighting
+•	day
+•	night
+•	dawn_dusk
+•	tunnel_transition
+Weather
+•	clear
+•	rain
+•	fog
+•	snow
+•	wet_road
+•	unknown
+Road type
+•	urban
+•	highway
+•	rural
+•	intersection
+•	parking_lot
+•	merge_ramp
+Traffic density
+•	low
+•	medium
+•	high
+
+Visibility quality
+•	good
+•	moderate
+•	poor
+Camera condition
+•	clean
+•	glare
+•	dirty_windshield
+•	blur
+•	shake
+•	occluded
+
+8. Driver-Behavior Extension Labels
+If the benchmark is later extended to behavior analysis, attach optional behavior tags.
+Example tags
+•	tailgating
+•	aggressive_lane_change
+•	unsafe_overtake
+•	poor_gap_acceptance
+•	weaving
+•	late_braking
+•	defensive_driving
+•	normal_behavior
+These should not replace collision labels; they should complement them.
+
+9. Annotation Unit Definitions
+9.1 Trip
+Continuous driving session.
+9.2 Clip
+A contiguous window extracted from a trip, for example 10–40 seconds.
+9.3 Event window
+The temporal segment centered around a positive event or candidate risk event.
+9.4 Frame annotation keypoints
+Certain frames should receive full actor / spatial annotations:
+•	first visible hazard frame,
+•	alert time frame,
+•	event time frame,
+•	peak risk frame,
+•	optional intermediate frames every N frames.
+
+10. Benchmark Tasks
+10.1 Task A — Binary ego-centric risk prediction
+Input
+Clip or streaming window.
+Output
+p(collision_or_near_collision within H)
+Horizon set
+Recommended:
+•	500 ms
+•	1000 ms
+•	1500 ms
+•	optional 2000 ms and 3000 ms
+
+10.2 Task B — Multi-horizon anticipation
+Input
+Clip ending at time (t)
+Output
+Multiple probabilities:
+•	p_event_500ms
+•	p_event_1000ms
+•	p_event_1500ms
+•	p_event_2000ms
+This avoids collapsing anticipation into a single threshold.
+
+10.3 Task C — Hazard actor localization
+Input
+Clip or frame sequence.
+Output
+•	primary hazard track ID,
+•	hazard bounding box,
+•	optional ranked actor list.
+
+10.4 Task D — Impact sector prediction
+Input
+Clip or final observation window.
+Output
+Predicted impact_sector.
+
+10.5 Task E — Reason code prediction
+Input
+Clip or fused scene graph.
+Output
+Predicted reason_code.
+
+10.6 Task F — Time-to-event regression
+Input
+Clip or frame sequence.
+Output
+Estimated tta_ms or bucketed horizon class.
+
+11. Benchmark Splits
+11.1 Required split structure
+Use trip- and vehicle-aware splits to prevent leakage.
+Split recommendation
+•	train
+•	validation
+•	test_in_domain
+•	test_out_of_domain
+
+11.2 Leakage prevention rules
+Never allow:
+•	the same trip in multiple splits,
+•	temporally adjacent clips from the same event in both train and test,
+•	near-identical duplicates across splits,
+•	the same vehicle-camera setup dominating all splits without balanced representation.
+
+11.3 Recommended domain-based test partitions
+Create condition slices such as:
+•	day vs night,
+•	clear vs rain,
+•	urban vs highway,
+•	high-speed vs low-speed,
+•	high traffic vs sparse traffic,
+•	different camera vendors / mounting angles.
+
+
+12. Sampling Strategy for Benchmark Construction
+12.1 Positive sampling
+For each positive event, create multiple clips ending at different offsets before the event.
+Example offsets:
+•	0.5 s before event,
+•	1.0 s before event,
+•	1.5 s before event,
+•	2.0 s before event,
+•	3.0 s before event.
+
+12.2 Negative sampling
+Negatives must include more than easy normal driving.
+Include:
+•	ordinary driving,
+•	aggressive but safe situations,
+•	strong motion but no conflict,
+•	non-ego accidents,
+•	shoulder obstacles,
+•	parked vehicles,
+•	adjacent-lane events not threatening ego.
+Hard negatives are essential.
+
+12.3 Near-collision sampling
+Near-collision events should be sampled similarly to collisions, but clearly labeled and separable if needed.
+Recommended options:
+•	treat as positive in main benchmark,
+•	and also report collision-only subset performance.
+
+
+
+
+13. Metrics Specification
+13.1 Primary metrics
+A. AP by anticipation horizon
+Compute average precision separately at:
+•	500 ms,
+•	1000 ms,
+•	1500 ms,
+•	optional longer horizons.
+B. AUC
+Report ROC AUC for overall event prediction.
+C. Mean time-to-accident (mTTA)
+Average lead time at which events are correctly anticipated.
+
+13.2 Secondary metrics
+Hazard localization
+•	top-1 hazard actor accuracy,
+•	box IoU at alert frame,
+•	track localization accuracy.
+Impact prediction
+•	impact sector accuracy.
+Explanation
+•	reason-code accuracy,
+•	macro-F1 over reason codes.
+Regression
+•	MAE / RMSE on TTA.
+
+13.3 Product metrics
+For enterprise deployment, include:
+•	false alerts per driving hour,
+•	missed critical events per 1000 km,
+•	median / P95 alert lead time,
+•	nuisance alert rate by condition,
+•	severity-weighted miss rate,
+•	event review usefulness.
+
+13.4 Condition-wise reporting
+Always report metrics by:
+•	day/night,
+•	weather,
+•	road type,
+•	traffic density,
+•	object class,
+•	visibility quality,
+•	speed regime if available.
+
+14. Acceptance Criteria for Pilot Benchmark
+Example acceptance criteria for early pilot:
+Offline event mining
+•	strong recall on collision and near-collision,
+•	useful event ranking,
+•	hazard actor visible in most flagged clips,
+•	acceptable false positive density for analyst review.
+Online advisory prototype
+•	warning lead time above business threshold,
+•	false alerts per hour below defined limit,
+•	stable hazard localization,
+•	reason code available for audible alerts.
+These values should be finalized with customer stakeholders.
+
+
+
+
+
+
+15. Annotation Workflow Specification
+15.1 Recommended annotation stages
+Stage 1 — Event triage
+Annotator marks:
+•	collision / near-collision / normal,
+•	ego relevance,
+•	rough event time,
+•	scenario type.
+Stage 2 — Temporal refinement
+Annotator marks:
+•	event start,
+•	event time,
+•	alert time,
+•	first visible hazard time.
+Stage 3 — Spatial refinement
+Annotator marks:
+•	hazard actor box,
+•	hazard track,
+•	impact sector,
+•	optional region of impact.
+Stage 4 — Context and reason labels
+Annotator marks:
+•	weather,
+•	lighting,
+•	road type,
+•	reason code,
+•	optional preventive action.
+
+15.2 Quality control rules
+Use:
+•	double annotation for positive events,
+•	adjudication for disagreement,
+•	consensus for alert time,
+•	audit sampling for label drift,
+•	clear annotation guide with examples.
+
+16. Suggested JSON Schema
+{
+  "clip_id": "trip123_clip045",
+  "trip_id": "trip123",
+  "video_path": "...",
+  "clip_start_ts": 120.0,
+  "clip_end_ts": 160.0,
+  "fps_nominal": 30,
+  "event_label": "near_collision",
+  "ego_involved": "yes",
+  "severity": "near_collision_high",
+  "scenario_type": ["cut_in_left", "rapid_closing_speed"],
+  "event_start": 149.2,
+  "event_time": 151.0,
+  "alert_time": 149.8,
+  "first_visible_hazard_time": 147.5,
+  "hazard_actor_id": 27,
+  "hazard_actor_class": "car",
+  "impact_sector": "front_left",
+  "reason_code": "cut_in_left",
+  "preventive_action": "reduce_speed",
+  "context": {
+    "lighting": "day",
+    "weather": "clear",
+    "road_type": "urban",
+    "traffic_density": "high",
+    "visibility_quality": "good",
+    "camera_condition": "clean"
+  },
+  "frames": [
+    {
+      "frame_index": 900,
+      "timestamp": 150.0,
+      "hazard_bbox": [820, 290, 1010, 520],
+      "hazard_track_visible": true
+    }
+  ]
+}
+
+
+
+
+
+
+17. Benchmark Leaderboard Template
+For each model, report:
+•	AP@500ms
+•	AP@1000ms
+•	AP@1500ms
+•	AUC
+•	mTTA
+•	Hazard Actor Accuracy
+•	Impact Sector Accuracy
+•	Reason-Code F1
+•	False Alerts / Hour
+•	Latency P50 / P95
+•	Throughput
+If online system:
+•	edge device type,
+•	input FPS,
+•	effective inference FPS,
+•	power or compute budget if possible.
+
+18. Recommended First Version
+If customer data is limited, start with a benchmark spec that requires only:
+•	clip-level event label,
+•	ego relevance,
+•	event time,
+•	hazard actor ID if possible,
+•	coarse reason code,
+•	day/night/weather/road type.
+Then expand in Version 2 to:
+•	alert time,
+•	full track annotations,
+•	impact sector,
+•	preventive action,
+•	richer context labels.
+
+
+
+
+19. Final Recommendation
+For this use case, the label schema should be:
+•	ego-centric,
+•	multi-horizon,
+•	actor-aware,
+•	localization-aware,
+•	explanation-ready,
+•	condition-aware.
+The benchmark should evaluate not only whether a model predicts danger, but also:
+•	how early,
+•	for which actor,
+•	under what conditions,
+•	and with what operational false-alert cost.
+
+Customer Data Requirements Checklist and Research Reading Plan
+For Ego-Centric Collision Anticipation and Driving Intelligence
+1. Purpose
+This document helps before customer data arrives.
+It is designed to support:
+•	customer conversations,
+•	solution scoping,
+•	data request planning,
+•	architecture design,
+•	benchmark preparation,
+•	research study planning.
+It contains two practical artifacts:
+1.	a customer-ready data requirements checklist,
+2.	a research reading plan aligned to ego-centric collision anticipation and related driving-intelligence use cases.
+2. Customer-Ready Data Requirements Checklist
+2.1 Project framing questions
+These must be clarified before data transfer.
+Business objective
+Ask:
+•	What business problem are we solving first?
+•	Is the first target collision prediction, near-miss detection, risky event mining, driver coaching, or real-time warning?
+•	Is the customer more interested in offline analytics, online warning, or both?
+•	What action should be triggered by the output?
+Product expectation
+Ask:
+•	Should the system produce only event labels, or also explanation and localization?
+•	Does the customer want risk scoring, alerts, dashboards, or searchable event archives?
+•	Is the first deployment advisory-only, review-only, or safety-critical?
+Event definition
+Ask:
+•	What counts as a collision?
+•	What counts as a near-collision?
+•	Does a crash in another lane count as a positive if ego vehicle is not involved?
+•	How is “dangerous driving” defined in the customer environment?
+2.2 Video source requirements
+Camera placement
+Ask for:
+•	mounting location,
+•	windshield or dashboard placement,
+•	field of view,
+•	whether all vehicles use the same setup,
+•	camera angle consistency across fleet,
+•	whether any calibration is available.
+Video format
+Ask for:
+•	codec,
+•	container,
+•	resolution,
+•	FPS,
+•	bitrate,
+•	compression settings,
+•	audio availability,
+•	whether timestamps are embedded,
+•	whether clips are continuous or event-triggered,
+•	whether files contain multi-camera streams.
+Environmental conditions
+Ask for expected mix of:
+•	day / night,
+•	rain / fog / glare,
+•	city / highway / rural,
+•	traffic density,
+•	country / road-rule differences,
+•	seasonal variability.
+Operational quality issues
+Ask whether videos may contain:
+•	dropped frames,
+•	corruption,
+•	camera shake,
+•	dirty windshield,
+•	low-light noise,
+•	reflections,
+•	lens occlusion,
+•	mount-angle drift,
+•	partial blackouts.
+ 
+2.3 Sensor and telemetry availability
+Ask whether the customer can provide:
+•	speed,
+•	acceleration,
+•	brake events,
+•	steering angle,
+•	yaw rate,
+•	IMU,
+•	GPS,
+•	route / trip metadata,
+•	road-type metadata,
+•	weather metadata,
+•	vehicle type,
+•	ADAS event logs.
+Why this matters
+These signals are not mandatory for a first camera-only prototype, but they can strongly improve:
+•	ego-motion normalization,
+•	time-to-collision estimates,
+•	behavior scoring,
+•	false-positive analysis,
+•	event explanation,
+•	calibration.
+2.4 Label and annotation requirements
+Event labels
+Ask whether the customer already has labels for:
+•	collision,
+•	near-collision,
+•	harsh braking,
+•	cut-in,
+•	unsafe lane change,
+•	crossing conflict,
+•	pedestrian conflict,
+•	driver coaching events.
+Temporal labels
+Ask whether they can provide:
+•	event timestamp,
+•	event start and end,
+•	first predictable moment,
+•	severity level,
+•	reviewer confidence.
+Spatial labels
+Ask whether they can provide:
+•	hazard actor bounding box,
+•	track ID,
+•	crash object location,
+•	lane region,
+•	impact side / direction.
+Context labels
+Ask whether they can provide:
+•	weather,
+•	lighting,
+•	road type,
+•	urban/highway/intersection,
+•	speed regime,
+•	traffic density,
+•	visibility quality.
+Explanation labels
+Ask whether they can provide cause/reason annotations such as:
+•	lead vehicle braking,
+•	cut-in from left/right,
+•	intersection crossing conflict,
+•	stopped vehicle ahead,
+•	side-swipe setup,
+•	pedestrian intrusion,
+•	distraction-related delayed reaction.
+2.5 Data volume and distribution requirements
+Ask for approximate counts of:
+•	total driving hours,
+•	number of vehicles,
+•	number of trips,
+•	number of collision events,
+•	number of near-collision events,
+•	normal driving hours,
+•	hard-negative events,
+•	night driving proportion,
+•	adverse-weather proportion.
+Important
+Ask for class imbalance details because rare-event modeling is highly sensitive to positive/negative ratios.
+2.6 Sampling and representativeness questions
+Ask:
+•	Is the data representative of real deployment conditions?
+•	Are accident or risky-event clips oversampled relative to normal driving?
+•	Are there enough hard negatives?
+•	Is there distribution across different routes, cities, and vehicle types?
+•	Are there domain shifts such as different camera vendors or mounting angles?
+2.7 Privacy, compliance, and governance
+Ask:
+•	Are license plates or faces considered sensitive?
+•	Is audio allowed?
+•	What are data retention rules?
+•	Can raw videos leave customer systems?
+•	Is annotation allowed externally?
+•	Are there regional privacy constraints?
+•	Is on-prem deployment required?
+•	Is model training allowed on uploaded customer data?
+2.8 Deployment requirements
+Ask:
+•	Where will inference run: edge, cloud, hybrid?
+•	What is the latency requirement?
+•	Is online warning required?
+•	What edge hardware exists?
+•	Is GPU available in vehicle or only cloud processing?
+•	What bandwidth is available for uploads?
+•	Are clips uploaded continuously or only event-triggered?
+•	Is there a backend dashboard requirement from day one?
+2.9 Evaluation and acceptance criteria
+Ask:
+•	What matters more: recall, precision, lead time, or nuisance alert rate?
+•	What false alert rate is acceptable?
+•	What missed-event rate is acceptable?
+•	What review workflow is expected?
+•	What is the threshold for a successful pilot?
+•	Are there different KPIs for offline review vs online warning?
+2.10 Customer data handoff checklist
+Use this as a practical list during onboarding.
+Required minimum for Phase 1
+•	sample front-camera videos,
+•	camera specification sheet,
+•	event definition document,
+•	deployment objective (offline / online / hybrid),
+•	rough event counts,
+•	privacy and retention rules.
+Strongly recommended for Phase 1
+•	trip metadata,
+•	speed / brake / GPS logs,
+•	event timestamps,
+•	examples of true positives and false positives from existing rules if any,
+•	environmental diversity summary.
+Ideal for Phase 2+
+•	actor-level labels,
+•	reason labels,
+•	CAN/IMU,
+•	edge hardware details,
+•	reviewer workflow,
+•	existing dashboards or safety process docs.
+3. Customer Discovery Questionnaire
+You can ask these questions in a workshop.
+Problem and product
+1.	What is the first business problem you want solved?
+2.	Are you optimizing for offline analytics, online warning, or both?
+3.	What action should happen when the system detects risk?
+4.	What does success look like after 3 months?
+Event definitions
+5.	How do you define collision, near-collision, and risky driving?
+6.	Should the system only care about ego-involved events?
+7.	What kinds of risky scenarios matter most: rear-end, cut-in, side-swipe, crossing traffic, pedestrians?
+Data and sensors
+8.	What cameras are installed and where?
+9.	Are videos continuous or event-triggered?
+10.	Do you have speed, brake, GPS, steering, or IMU?
+11.	Do you have driver-facing camera data as well?
+Labels and review
+12.	Do you already have event labels or review notes?
+13.	Can you provide timestamps or only clip-level labels?
+14.	Do you have examples of false positives from prior systems?
+15.	Who will review model outputs internally?
+Deployment and operations
+16.	Do you need edge inference?
+17.	What latency is acceptable?
+18.	Can raw videos be uploaded to cloud?
+19.	What is your privacy policy for stored clips?
+20.	Do you need searchable event archives and dashboards?
+4. Internal Design Checklist Before Data Arrives
+Use this internally while waiting for customer data.
+4.1 Lock down the output contract
+Define now:
+•	event classes,
+•	prediction horizons,
+•	hazard actor output,
+•	impact region / sector output,
+•	reason code taxonomy,
+•	confidence and advisory levels.
+4.2 Define the first architecture
+Recommended baseline:
+•	ingestion,
+•	stream health,
+•	perception stack,
+•	object tracking,
+•	lane/drivable-space,
+•	depth,
+•	threat metrics,
+•	temporal risk model,
+•	fusion + alert manager,
+•	event clip store.
+4.3 Define the first evaluation package
+Prepare:
+•	research metrics,
+•	product metrics,
+•	false-alert analysis format,
+•	error taxonomy,
+•	condition-wise benchmark breakdown.
+4.4 Define the first label schema
+Prepare labels for:
+•	collision,
+•	near-collision,
+•	no-event,
+•	event time,
+•	hazard actor,
+•	reason code,
+•	context regime,
+•	visibility quality.
+4.5 Define the first error categories
+Examples:
+•	non-ego accident confusion,
+•	night glare,
+•	bad depth on far actors,
+•	tracker ID switch,
+•	parked-car false warning,
+•	cross-lane confusion,
+•	late alert.
+5. Research Reading Plan
+This reading plan is ordered so that you move from general understanding to highly targeted design insights.
+Stage 1 — Understand the problem space and taxonomy
+Paper 1 - Vision-Based Collision Warning Systems with Deep Learning
+Why read it
+•	gives the broad taxonomy of camera-based collision warning,
+•	distinguishes direct prediction methods from threat-metric approaches,
+•	highlights evaluation gaps,
+•	helps you think like a system designer instead of only a model builder.
+What to extract
+•	problem formulation taxonomy,
+•	architecture categories,
+•	deployment challenges,
+•	failure modes,
+•	metrics and limitations.
+
+
+Stage 2 — Understand ego-centric benchmark design
+Paper 2 - Nexar Dashcam Collision Prediction Dataset and Challenge (2025)
+Why read it
+•	highly relevant to your exact use case,
+•	focuses on real-world dashcam collision and near-collision prediction,
+•	includes event time and alert time,
+•	gives a practical benchmark mindset.
+What to extract
+•	label definition,
+•	event horizon design,
+•	prediction targets,
+•	evaluation metrics,
+•	what “good warning timing” means.
+Stage 3 — Correct your task framing using ego relevance
+Paper 3 - BADAS: Context-Aware Collision Prediction Using Real-World Dashcam Data (2025)
+Why read it
+•	extremely important for avoiding the wrong task framing,
+•	argues that many legacy datasets are not properly ego-centric,
+•	introduces better labeling around ego-involved events.
+What to extract
+•	differences between generic accident prediction and ego collision prediction,
+•	data annotation principles,
+•	benchmark pitfalls,
+•	recommendations for data curation.
+Stage 4 — Learn object-centric interaction modeling
+Paper 4 - Graph(Graph): A Nested Graph-Based Framework for Early Accident Anticipation (WACV 2024)
+Why read it
+•	shows how to model interactions among actors,
+•	good reference for hazard localization and multi-agent reasoning,
+•	useful for “with whom will ego collide?”
+What to extract
+•	node and edge design,
+•	temporal graph modeling,
+•	how object-centric reasoning helps over scene-only models,
+•	how to adapt graph logic to ego-vehicle risk.
+Stage 5 — Add 3D and depth awareness
+Paper 5 - AccNet: Real-Time Accident Anticipation for Autonomous Driving (2024)
+Why read it
+•	adds depth and multi-task design,
+•	useful for better ego-relative physical reasoning from monocular video,
+•	relevant for real-time deployment thinking.
+What to extract
+•	how depth is used,
+•	why 3D awareness helps,
+•	multi-task setup,
+•	real-time trade-offs.
+Stage 6 — Learn richer accident understanding and explanation
+Paper 6 - MM-AU: Abductive Ego-View Accident Video Understanding for Safe Driving Perception (CVPR 2024)
+Why read it
+•	useful if you want explanation, cause, and prevention understanding,
+•	expands beyond simple accident anticipation,
+•	relevant for enterprise review tools and reason-code systems.
+What to extract
+•	richer label schema,
+•	object and reason annotations,
+•	how accident understanding can be broader than risk prediction,
+•	opportunities for explainable products.
+Stage 7 — Understand classic datasets and benchmark conventions
+Paper 7 - DADA-2000
+Why read it
+•	classic benchmark for accident anticipation,
+•	useful to understand accident windows and prior literature.
+What to extract
+•	annotation style,
+•	accident object / temporal labeling,
+•	limitations vs newer ego-centric benchmarks.
+Paper 8 - DoTA
+Why read it
+•	very useful for “when / where / what” anomaly understanding,
+•	strong reference for spatial-temporal event labeling.
+What to extract
+•	localization task design,
+•	anomaly timeline structure,
+•	metric style.
+Stage 8 — Extend toward driver behavior and action understanding
+Paper 9 - DriveAction (2025)
+Why read it
+•	directly relevant if you later expand into driver behavior or maneuver understanding,
+•	connects egocentric driving video to action and decision labels.
+What to extract
+•	driving action taxonomy,
+•	maneuver understanding formulation,
+•	how this can share infrastructure with collision anticipation.
+
