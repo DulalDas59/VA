@@ -1,0 +1,1928 @@
+
+Technical Approach
+Offline Enterprise-Grade Ego-Centric Collision Anticipation, Near-Miss Mining, and Hazard Intelligence Platform
+1. Problem definition
+1.1 System goal
+We are building an offline ego-centric hazard intelligence platform for front-mounted driving video.
+The system must answer:
+•	Will the ego vehicle enter a collision or near-collision state within a defined future horizon?
+•	Which actor is the primary hazard?
+•	Where is the likely impact region or impact sector?
+•	How early could the event have been predicted?
+•	Why is the event risky?
+•	How do we package the result for analyst review, search, dashboarding, and retraining?
+The system is offline-only in V1, which means:
+•	no real-time latency constraint
+•	no edge deployment requirement
+•	multi-pass inference is allowed
+•	future-context retrospective analysis is allowed
+•	compute can be optimized for throughput and cost rather than strict milliseconds
+1.2 Product positioning
+This is not:
+•	a generic crash classifier
+•	an online ADAS controller
+•	a driver-facing intervention stack
+•	a single end-to-end model with one scalar score
+This is:
+•	an offline hazard mining and review system
+•	a near-miss and collision intelligence engine
+•	a trip-level risk analytics platform
+•	a labeling and retraining foundation for future products
+1.3 Primary task
+The primary task should be defined as:
+Given ego-front video up to time t, predict whether the ego vehicle will collide or near-collide within horizons such as 500 ms, 1000 ms, 1500 ms, optionally 2000–3000 ms.
+That multi-horizon framing is much stronger than a single binary label. It aligns better with real warning usefulness and with the strongest recent ego-centric benchmark direction. (NHTSA)
+1.4 Secondary tasks
+The same system should also produce:
+•	hazard actor identity
+•	hazard actor class
+•	impact sector
+•	time-to-event
+•	reason code
+•	severity score
+•	clip evidence package
+•	trip-level risk summary
+1.5 Positive and negative philosophy
+Positive classes
+•	collision
+•	near_collision
+Negative classes
+•	normal
+•	hard_negative
+Hard negatives must explicitly include:
+•	visible non-ego accidents
+•	adjacent-lane dramatic motion
+•	hard braking without true conflict
+•	parked vehicles near lane edge
+•	shoulder obstacles
+•	tunnel glare artifacts
+•	temporary road clutter
+This is essential because otherwise the system learns “salient crash-like visuals” instead of true ego risk.
+1.6 Offline-only design principle
+Even though the platform is offline, we still need two evaluation modes:
+Anticipation-faithful mode
+•	uses only frames up to time t
+•	used for realistic horizon metrics
+Retrospective mode
+•	allowed to use future context
+•	used for richer explanation, event segmentation, and analyst narratives
+That split prevents the offline system from “cheating” during benchmark evaluation while still taking full advantage of retrospective analysis for enterprise review.
+
+2. Output contract
+This must be frozen before model selection.
+2.1 Event output schema
+Every mined event or evaluated prediction window should emit:
+•	trip_id
+•	camera_id
+•	source_video_id
+•	timestamp
+•	risk_horizon_ms
+•	risk_score
+•	event_type
+•	hazard_actor_id
+•	hazard_actor_class
+•	hazard_actor_bbox
+•	hazard_track_ref
+•	impact_sector
+•	time_to_event_ms
+•	reason_code
+•	severity
+•	visibility_quality
+•	sync_quality
+•	model_confidence
+•	heuristic_gate_reason
+•	evidence_clip_pre_uri
+•	evidence_clip_post_uri
+•	privacy_masked_review_uri
+•	model_version
+•	pipeline_version
+2.2 Why this contract matters
+A scalar score is not enough.
+This schema is required to support:
+•	analyst review
+•	dashboarding
+•	event search
+•	trip summaries
+•	root-cause analysis
+•	threshold tuning
+•	replay evaluation
+•	retraining loops
+2.3 New V2.1 output fields to add
+To patch the production gaps, explicitly add:
+•	pii_mask_status
+•	sync_offset_ms
+•	sync_drift_ppm or equivalent drift estimate
+•	quality_gate_status
+•	cascade_stage_triggered
+•	deterministic_baseline_score
+•	full_model_score
+•	review_status
+These make the system operationally auditable.
+
+3. Label schema + benchmark specification
+3.1 Core labels
+At minimum, label:
+•	event_label ∈ {collision, near_collision, normal}
+•	ego_involved ∈ {yes, no, uncertain}
+•	event_time
+•	event_start
+•	alert_time
+•	first_visible_hazard_time
+•	hazard_actor_id
+•	hazard_actor_class
+•	impact_sector
+•	reason_code
+•	context_regime
+•	visibility_quality
+3.2 Why alert_time is essential
+A benchmark based only on “event happened” is weak.
+A benchmark with alert_time tests whether the system could have identified the event early enough to matter.
+3.3 Context labels
+Always include:
+•	day / night / dawn-dusk
+•	clear / rain / fog / wet-road
+•	urban / highway / rural / intersection
+•	traffic density
+•	camera quality condition
+•	PII masking eligibility
+•	telemetry availability
+3.4 Reason taxonomy
+Recommended initial taxonomy:
+•	lead_vehicle_brake
+•	rapid_closing_speed
+•	cut_in_left
+•	cut_in_right
+•	cross_traffic_entry
+•	stopped_vehicle_ahead
+•	unsafe_merge
+•	pedestrian_intrusion
+•	motorcycle_conflict
+•	occluded_actor_emergence
+•	multi_actor_conflict
+•	unknown_reason
+3.5 Benchmark tasks
+Task A — Multi-horizon risk prediction
+Predict event probability at:
+•	500 ms
+•	1000 ms
+•	1500 ms
+•	optional 2000–3000 ms
+Task B — Hazard actor localization
+Predict the primary hazard actor and track.
+Task C — Impact sector prediction
+Predict:
+•	front_left
+•	front_center
+•	front_right
+•	left_side
+•	right_side
+•	rear_like
+•	unknown
+Task D — Reason code prediction
+Predict the primary explanation.
+Task E — Time-to-event estimation
+Predict TTA or TTA bucket.
+3.6 Metrics
+Research metrics:
+•	AP by horizon
+•	AUC
+•	mean time-to-accident
+•	hazard actor accuracy
+•	localization IoU / track overlap
+•	impact sector accuracy
+•	reason-code F1
+•	TTA MAE / RMSE
+Product metrics:
+•	false alerts per driving hour
+•	events surfaced per analyst hour
+•	top-K risky clip precision
+•	median / P95 lead time
+•	condition-wise miss rate
+•	reviewer usefulness score
+3.7 New V2.1 benchmark additions
+Add explicit benchmark slices for:
+•	non-ego visible crash negatives
+•	night glare
+•	tunnel entry/exit
+•	parked-car near-lane scenarios
+•	motorcycle lane-splitting
+•	poor telemetry sync quality
+•	privacy-mask-required review flows
+3.8 Split policy
+Use:
+•	trip-aware splits
+•	vehicle-aware splits
+•	camera-configuration-aware splits
+•	geography-aware slices if possible
+•	condition-aware out-of-domain tests
+Never leak adjacent clips from the same event across train and test.
+
+4. Module-wise interfaces
+Now the most important part: define interfaces before implementations.
+
+4.1 Module A — Video ingestion, media probe, and dataset inventory
+Purpose
+Turn raw customer videos and optional telemetry into indexed, validated, replayable artifacts.
+Inputs
+•	raw video files
+•	optional trip manifests
+•	optional CAN / IMU / GPS / brake logs
+•	optional customer metadata
+Outputs
+•	media manifest
+•	telemetry manifest
+•	validation report
+•	trip/chunk index
+•	synchronization metadata
+•	quality flags
+Core functions
+•	probe_video(path) -> MediaMetadata
+•	validate_video(path) -> ValidationResult
+•	index_trip(video, telemetry=None) -> TripRecord
+•	chunk_trip(trip) -> list[ClipRef]
+•	inventory_dataset(root) -> DatasetInventory
+Primary tools
+•	ffmpeg / ffprobe for media probing and slicing
+•	OpenCV for frame-level access and validation; OpenCV’s main modules include videoio, video, and calib3d, which are directly relevant to video I/O, video analysis, and camera geometry. (OpenCV Documentation)
+What developers often miss
+•	wrong FPS metadata
+•	duplicated frames
+•	partially corrupted clips
+•	device firmware drift
+•	exposure-shift patterns
+•	clip boundaries not aligned to trips
+
+4.2 Module A.5 — Telemetry-video synchronization and drift correction
+This is one of the most important V2.1 additions.
+Purpose
+Align video timestamps with CAN / IMU / GPS / brake telemetry so that kinematic reasoning is not corrupted by clock mismatch.
+Inputs
+•	video timestamps
+•	telemetry timestamps
+•	optional sync anchor events (hard brake, turn, speed pulse)
+•	frame-time estimates
+Outputs
+•	estimated offset
+•	drift model
+•	resampled telemetry aligned to video timebase
+•	sync quality score
+•	invalid-telemetry flag
+Core functions
+•	estimate_initial_offset(video_ts, telemetry_ts)
+•	fit_drift_model(video_ts, telemetry_ts)
+•	resample_telemetry_to_video(...)
+•	compute_sync_quality(...)
+Recommended methods
+•	anchor-event alignment using known events such as braking spikes
+•	cross-correlation between visual ego-motion and speed/brake signals
+•	piecewise linear drift correction
+•	interpolation to frame timestamps
+•	confidence scoring for sync stability
+Why it matters
+If telemetry and video drift by even a few hundred milliseconds, TTC-like features and braking-context reasoning become unreliable.
+Design principle
+Every processed trip must persist:
+•	sync_offset_ms
+•	sync_drift_model
+•	sync_quality
+Downstream modules must know whether telemetry-derived features are trustworthy.
+
+4.3 Module A.6 — PII masking, privacy controls, and review-safe media generation
+This is the second major V2.1 patch.
+Purpose
+Ensure human-review artifacts and long-term analytics storage are privacy-aware and region-compliant.
+Inputs
+•	original clips
+•	object detections / face detections
+•	privacy policy profile
+•	customer retention policy
+Outputs
+•	masked review clips
+•	raw-to-masked lineage map
+•	privacy audit logs
+•	retention metadata
+Core functions
+•	detect_pii(frame) -> plates/faces/identifiers
+•	mask_pii(frame_or_clip)
+•	generate_review_safe_clip(event)
+•	apply_retention_policy(record)
+PII targets
+•	license plates
+•	pedestrian faces
+•	driver faces if interior views ever appear
+•	any customer-specific overlay that leaks identity
+Primary candidate tools
+•	YOLO-family fine-tuned plate detector
+•	face detectors such as RetinaFace / SCRFD / MediaPipe face detection
+•	OpenCV blur / mosaic / polygon masking
+Governance stance
+Raw media may still exist in a restricted ingestion zone if contractually necessary, but:
+•	reviewer-facing clips should be masked by default
+•	archived event clips should be policy-driven
+•	masking status should be explicitly logged
+For regulated deployments, design for GDPR/CCPA-style obligations around privacy notices, retention, minimization, and consumer rights handling. GDPR is the EU’s core personal-data regulation, and California’s CCPA imposes business responsibilities including privacy notices and handling consumer requests. (EUR-Lex)
+
+4.4 Module B — Preprocessing and quality assessment
+Purpose
+Normalize the data just enough for robust perception, while preserving evidence and tagging uncertainty.
+Inputs
+•	frame stream
+•	camera calibration
+•	mount profile
+•	privacy policy profile
+Outputs
+•	normalized frames
+•	quality tags
+•	preprocessing audit metadata
+•	optional review-safe frames
+Core functions
+•	undistort(frame, calib)
+•	normalize_color(frame)
+•	resize(frame, target)
+•	estimate_quality(frame_seq) -> QualityTags
+•	construct_temporal_window(frames, policy)
+Algorithms
+•	lens undistortion
+•	aspect-preserving resize
+•	optional CLAHE if it helps empirically
+•	blur detection via Laplacian variance
+•	glare / darkness heuristics
+•	rain / reflection tagging
+•	stabilization if needed
+Design principle
+Do not over-clean. Preserve evidence. Normalize lightly. Tag aggressively.
+
+4.5 Module C — Lightweight heuristic gating and cascade controller
+This is the third major V2.1 patch.
+Purpose
+Control compute cost by escalating only promising windows to expensive models.
+Inputs
+•	frame stream or coarse clips
+•	optional telemetry
+•	simple object detections or motion summaries
+Outputs
+•	candidate risk windows
+•	gate reasons
+•	stage routing decisions
+Core functions
+•	compute_lightweight_gate_score(window)
+•	route_window_to_stage(window)
+•	sample_background_windows(...)
+Recommended cascade
+Stage 0 — media and quality gate
+•	reject unusable/corrupted windows
+•	mark low-visibility windows
+Stage 1 — cheap heuristic gate
+•	box growth
+•	simple closing rate
+•	abrupt brake telemetry if available
+•	in-lane occupancy change
+•	motion anomaly spike
+Stage 2 — moderate-cost perception
+•	full detector + tracker
+•	lane/drivable
+•	depth every N frames
+Stage 3 — expensive reasoning
+•	temporal transformer / VideoMAE-class model
+•	graph hazard model
+•	explanation head
+Stage 4 — retrospective analysis
+•	only for flagged events or sampled audit sets
+Critical safeguard
+Do not gate too aggressively. Always include:
+•	random background sampling
+•	periodic full-pass audit runs
+•	hard-negative sweeps
+Otherwise the heavy model never sees subtle misses.
+Why this matters
+Ray Data is strong for scalable offline batch inference, but it will still cost money if you run the heaviest model over every benign frame of 10,000 fleet hours. Ray explicitly supports scalable preprocessing and batch inference, which makes it a good fit for a staged offline pipeline. (docs.ray.io)
+
+
+
+4.6 Module D — Object detection
+Purpose
+Detect road actors robustly and consistently.
+Primary candidate
+•	Ultralytics YOLO family. Official docs describe YOLO11 as supporting object detection, instance segmentation, pose estimation, oriented boxes, and tracking-related workflows, which makes it practical for a modular CV stack. (docs.ultralytics.com)
+Alternatives
+•	RT-DETR
+•	Detectron2-based detectors
+•	Grounding DINO for future open-vocabulary workflows
+Classes
+•	car
+•	truck
+•	bus
+•	motorcycle
+•	bicycle
+•	pedestrian
+•	barrier
+•	obstacle/cone if relevant
+Interface
+•	detect(frame) -> Detections
+•	batch_detect(frames) -> Sequence[Detections]
+
+4.7 Module E — Multi-object tracking
+Purpose
+Convert detections into stable actor identities.
+Primary candidate
+•	ByteTrack. The core idea is associating almost every detection box, including low-score boxes, to improve recall and track continuity. (docs.ultralytics.com)
+Alternatives
+•	BoT-SORT
+•	DeepSORT
+•	StrongSORT
+Offline enhancement
+Because the system is offline, enable:
+•	forward tracking
+•	short-gap repair
+•	track smoothing
+•	confidence-based pruning
+Interface
+•	track(detections_seq) -> TrackSet
+•	repair_tracks(trackset) -> TrackSet
+
+4.8 Module F — Lane and drivable-space understanding
+Purpose
+Infer scene geometry and path relevance.
+Primary candidate family
+•	SegFormer via MMSegmentation. MMSegmentation provides a mature segmentation toolkit with configs, dataset preparation, inference, train/test workflows, and visualization hooks. (mmsegmentation.readthedocs.io)
+Alternative
+•	YOLOP-style multitask panoptic driving perception. YOLOP is explicitly built for joint traffic-object detection, drivable-area segmentation, and lane detection. (mmsegmentation.readthedocs.io)
+Recommendation
+Prefer modular segmentation in V1. It is easier to debug and benchmark.
+Interface
+•	segment_drivable(frame)
+•	detect_lanes(frame)
+•	assign_lane(actor, lane_map)
+
+4.9 Module G — Monocular depth estimation
+Purpose
+Provide coarse 3D ordering and proximity features.
+Primary candidate
+•	Depth Anything V2. The paper reports finer and more robust depth predictions than V1, with model sizes from 25M to 1.3B parameters and strong generalization. (arXiv)
+Alternatives
+•	ZoeDepth
+•	MiDaS / DPT
+•	metric fine-tuned variants if domain calibration later supports them
+Design principle
+Use depth for:
+•	relative ordering
+•	trend over time
+•	actor proximity features
+•	uncertainty-aware support
+Not as absolute metric truth.
+Interface
+•	estimate_depth(frame)
+•	summarize_depth(track, depth_seq)
+
+4.10 Module H — Ego-motion estimation
+Purpose
+Separate ego-induced visual motion from actor-relative motion.
+V1 practical approach
+•	optical flow / feature flow
+•	lane-flow stabilization
+•	optional telemetry alignment
+Advanced candidate
+•	ORB-SLAM3. Its paper describes support for monocular, stereo, RGB-D, and visual-inertial SLAM, with strong robustness and multi-map capability. (arXiv)
+Recommendation
+Do not overbuild V1. Start with a practical ego-motion proxy and upgrade only if failure analysis demands it.
+Interface
+•	estimate_ego_motion(frames)
+•	normalize_actor_motion(track, ego_motion)
+
+4.11 Module I — Threat-metric engine
+Purpose
+Compute explicit, interpretable per-actor risk features.
+Core features
+•	TTC proxy
+•	time headway
+•	closing speed proxy
+•	lane conflict
+•	projected overlap
+•	lateral intrusion
+•	cut-in score
+•	stopped-lead-vehicle score
+•	cross-traffic conflict
+•	box expansion rate
+•	depth closing trend
+Interface
+•	compute_actor_features(track, ego_state, lane_map, depth)
+•	compute_scene_threat(actor_features)
+Role
+This becomes:
+•	the Day-0 deterministic baseline
+•	part of the fusion layer
+•	part of explanation
+•	a compute gate input
+
+4.12 Module J — Deterministic baseline engine
+This is the fourth major V2.1 patch.
+Purpose
+Establish a simple, auditable, non-ML benchmark floor before training temporal or graph models.
+Inputs
+•	tracks
+•	depth summaries
+•	lane maps
+•	ego-motion / telemetry
+Outputs
+•	deterministic risk score
+•	candidate windows
+•	baseline precision/recall curves
+Baseline logic examples
+•	TTC thresholding
+•	projected overlap thresholding
+•	same-lane lead-vehicle risk
+•	cut-in heuristic
+•	stopped-vehicle-ahead heuristic
+•	cross-traffic conflict heuristic
+Why this matters
+Without a deterministic baseline, you cannot prove the ROI of later ML modules to leadership.
+Interface
+•	score_window_baseline(window) -> BaselineScore
+•	generate_candidate_windows(trip)
+
+4.13 Module K — Temporal risk model
+Purpose
+Model short-horizon scene risk over clips.
+Primary candidate
+•	VideoMAE. The paper explicitly argues VideoMAE is a data-efficient self-supervised video pretraining approach, which is attractive when customer-labeled data is initially limited. (arXiv)
+Advanced candidate
+•	V-JEPA 2 / related JEPA-based video representations. Meta describes V-JEPA 2 as a self-supervised video model for understanding, prediction, and planning. (Meta AI)
+Alternatives
+•	TimeSformer
+•	Video Swin
+•	MViT
+•	simpler LSTM/TCN baselines over structured features
+Recommendation
+Use:
+•	structured temporal baseline first
+•	VideoMAE as the first strong transformer baseline
+•	V-JEPA 2 as an advanced representation experiment track
+Interface
+•	predict_scene_risk(clip) -> MultiHorizonRisk
+
+
+4.14 Module L — Actor-interaction model
+Purpose
+Reason over ego–actor and actor–actor interactions.
+Approach
+•	spatio-temporal graph reasoning over actor states
+Tools
+•	PyTorch Geometric
+•	DGL
+•	custom graph encoder if graph sizes remain small
+Research anchor
+•	Graph(Graph)-style object interaction reasoning
+Node features
+•	class
+•	box geometry
+•	depth summary
+•	velocity
+•	lane relation
+•	in-path score
+•	visibility / occlusion
+Edge features
+•	relative position
+•	relative depth
+•	relative bearing
+•	relative motion
+•	same-lane / crossing relation
+•	projected path conflict
+Interface
+•	predict_actor_hazard(graph_seq) -> ActorHazardScores
+
+4.15 Module M — Fusion and calibration
+Purpose
+Fuse deterministic and learned signals into a final, calibrated risk decision.
+Inputs
+•	baseline heuristic score
+•	threat metrics
+•	scene temporal model outputs
+•	actor graph model outputs
+•	quality regime flags
+•	sync quality
+•	optional telemetry features
+Outputs
+•	final risk score
+•	hazard actor
+•	impact sector
+•	reason code
+•	confidence
+•	severity
+Implementation options
+•	shallow MLP
+•	logistic calibration layer
+•	XGBoost / LightGBM for structured fusion
+Recommendation
+Start simple and interpretable:
+•	logistic / MLP
+•	tree-based fusion for structured features
+•	only later consider deeper end-to-end fusion
+
+4.16 Module N — Explanation and review package generator
+Purpose
+Produce consistent analyst-facing explanations and evidence bundles.
+V1
+•	structured supervised reason-code head
+•	deterministic explanation primitives
+•	event narrative template
+V2 enrichment
+•	optional VLM-based analyst-assist layer for richer retrospective narratives
+Important boundary
+Do not make a generative VLM the primary reason engine in V1.
+Interface
+•	generate_reason_code(event)
+•	generate_review_package(event)
+
+4.17 Module O — Event store, search, and review platform
+Purpose
+Turn predictions into an operational offline product.
+Core features
+•	searchable event metadata
+•	clip archive
+•	masked review clips
+•	trip timeline
+•	analyst review UI
+•	false-positive / hard-negative marking
+•	cohort analytics
+•	export for retraining
+Primary tools
+•	CVAT for annotation and QA; CVAT describes itself as an enterprise-grade platform for image, video, and 3D annotation with QA, automation, and team collaboration. (docs.cvat.ai)
+•	FiftyOne for interactive dataset visualization, curation, and prediction/error analysis across images, videos, and labels. (docs.voxel51.com)
+
+5. Candidate models / tools / algorithms
+Now that the architecture is fixed, here is the practical shortlist.
+5.1 Core engineering stack
+•	Python
+•	PyTorch; official docs describe it as an optimized tensor library for deep learning on GPUs and CPUs. (PyTorch Docs)
+•	OpenCV
+•	NumPy / Pandas
+•	Hydra / Pydantic for config
+5.2 Video/media
+•	FFmpeg / FFprobe
+•	OpenCV
+•	optional PyAV / Decord
+5.3 Detection
+Primary:
+•	Ultralytics YOLO family
+Alternatives:
+•	RT-DETR
+•	Detectron2 family
+•	Grounding DINO
+5.4 Tracking
+Primary:
+•	ByteTrack
+Alternatives:
+•	BoT-SORT
+•	DeepSORT
+•	StrongSORT
+5.5 Lane / drivable
+Primary:
+•	SegFormer + MMSegmentation
+Alternative:
+•	YOLOP-like multitask path
+5.6 Depth
+Primary:
+•	Depth Anything V2
+Alternatives:
+•	ZoeDepth
+•	MiDaS / DPT
+5.7 Ego motion
+Primary:
+•	optical-flow / lane-motion proxy
+Advanced:
+•	ORB-SLAM3
+5.8 Temporal modeling
+Primary:
+•	structured-feature temporal baseline
+•	VideoMAE
+Advanced:
+•	V-JEPA 2
+5.9 Graph reasoning
+Primary:
+•	PyTorch Geometric / DGL with Graph(Graph)-style design
+5.10 Annotation and review
+•	CVAT
+•	FiftyOne
+5.11 Tracking and reproducibility
+•	MLflow; official tracking docs describe logging parameters, metrics, code versions, and outputs, plus model registry support. (MLflow AI Platform)
+•	DVC; DVC docs position it as Git-like data/model versioning with reproducible pipelines and dvc.yaml-based workflows. (Data Version Control · DVC)
+5.12 Orchestration and scale
+•	Prefect; official docs describe pure-Python workflows with state tracking, failure handling, scheduling, and deployments. (Prefect)
+•	Airflow; official docs define workflows as DAGs composed of tasks and dependencies, with scheduling and operational orchestration. (Apache Airflow)
+•	Ray Data / Ray Core for distributed offline preprocessing and batch inference. (docs.ray.io)
+5.13 Future optimization / portability
+•	ONNX Runtime for cross-framework accelerated inference on diverse hardware and execution providers. (onnxruntime.ai)
+•	TensorRT for future NVIDIA inference optimization, mixed precision, dynamic shapes, and deployment acceleration. (NVIDIA Docs)
+
+6. Phased build plan
+Phase 0 — Spec and benchmark freeze
+Deliver:
+•	problem definition
+•	output contract
+•	label schema
+•	benchmark spec
+•	annotation guidelines
+•	privacy policy profile
+•	synchronization assumptions
+•	failure taxonomy
+No heavy model selection should be finalized before this.
+Phase 0.5 — Deterministic baseline
+Build:
+•	detector + tracker + lane/drivable + depth-lite
+•	TTC / overlap / lane conflict / cut-in heuristics
+•	candidate-window ranking
+•	baseline precision/recall and false-positive profile
+Deliver:
+•	deterministic risk floor
+•	initial compute-gating thresholds
+•	ROI baseline for ML justification
+Phase 1 — Offline mining baseline
+Build:
+•	media ingest
+•	telemetry sync
+•	PII masking
+•	preprocessing + quality tags
+•	full perception stack
+•	track building
+•	threat metric engine
+•	event ranking
+•	review clip generation
+Deliver:
+•	first usable offline event mining engine
+Phase 2 — Learned hazard engine
+Add:
+•	temporal risk model
+•	graph actor-interaction model
+•	fusion layer
+•	hazard actor output
+•	impact sector
+•	reason-code head
+Deliver:
+•	multi-horizon ego-centric hazard engine
+Phase 3 — Enterprise analytics and review platform
+Add:
+•	searchable event store
+•	masked clip archive
+•	CVAT/FiftyOne review workflow
+•	MLflow / DVC integration
+•	false-positive / hard-negative loop
+•	condition-wise dashboards
+Deliver:
+•	operational offline analytics platform
+Phase 4 — Hardening
+Add:
+•	representativeness audits
+•	camera/vendor drift tests
+•	sync-quality-conditioned evaluation
+•	condition-wise threshold packs
+•	full data-governance audit
+•	optional ONNX/TensorRT export experiments for future reuse
+Deliver:
+•	production-grade offline enterprise system
+
+7. Failure-mode, review, privacy, and governance strategy
+7.1 Failure-mode registry
+Track explicitly:
+Visual
+•	glare
+•	rain streaks
+•	blur
+•	tunnel transitions
+•	dirty windshield
+•	low bitrate artifacts
+•	occlusion
+Scene
+•	parked cars near lane
+•	adjacent-lane stop-and-go
+•	lane-splitting motorcycles
+•	construction zones
+•	emergency vehicles
+•	cross-traffic under occlusion
+Semantic
+•	non-ego visible crashes
+•	cut-ins that resolve safely
+•	multiple plausible hazard actors
+•	near-collision without contact
+•	shoulder objects incorrectly treated as in-path
+Systems
+•	FPS metadata mismatch
+•	corrupted uploads
+•	sync drift
+•	detector failure under night rain
+•	track fragmentation
+•	privacy-mask failure
+•	evidence clip extraction mismatch
+Every one of these should map to:
+•	a test slice
+•	a dashboard tag
+•	a review policy
+•	a retraining action if frequent
+7.2 Human review workflow
+Every surfaced event should be reviewable as:
+•	true positive
+•	useful early warning
+•	low-severity valid review item
+•	false positive
+•	ambiguous
+•	data-quality issue
+•	sync issue
+•	privacy-mask issue
+This is essential because offline systems improve fastest when review is structured.
+7.3 Privacy and compliance
+For customer dashcam data, privacy and governance are non-negotiable.
+Plan for:
+•	review-safe masked media by default
+•	restricted raw-ingest zone
+•	retention classes for raw vs masked clips
+•	role-based access
+•	audit logs
+•	customer-controlled deletion / export handling
+•	region-aware deployment assumptions
+For jurisdictions subject to GDPR or CCPA-style rules, design for:
+•	data minimization
+•	defined retention
+•	consumer-rights handling where applicable
+•	privacy notices / policy traceability
+•	access and deletion workflows. (EUR-Lex)
+7.4 Dataset representativeness control
+Do not assume the first customer data is representative.
+Audit explicitly for:
+•	route bias
+•	geography bias
+•	weather bias
+•	camera-vendor bias
+•	fleet-vehicle bias
+•	event oversampling
+•	night/low-light underrepresentation
+•	driver-style distribution skew
+Representativeness reports should be a standard artifact in every model review.
+7.5 Governance and lineage
+Persist:
+•	dataset version
+•	annotation version
+•	masking version
+•	sync algorithm version
+•	model version
+•	threshold pack version
+•	reviewer decision history
+•	retraining provenance
+Without lineage, enterprise trust collapses quickly.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Module-to-candidate matrix
+I’m treating Primary as the current V1 default candidate, and Alternatives as valid backup paths. This is still not a hard lock; final selection should be validated against customer data, failure modes, and compute cost.
+
+1. Video ingestion, probing, and clip management
+Purpose
+Validate raw media, extract metadata, build trip/clip inventory, and make the dataset replayable.
+Primary
+•	ffmpeg / ffprobe
+•	OpenCV video I/O
+Alternatives
+•	PyAV
+•	Decord
+•	NVIDIA DALI later for very large-scale accelerated decode
+Inputs
+•	raw MP4/MKV/AVI
+•	trip manifests
+•	optional telemetry logs
+Outputs
+•	media manifest
+•	validation report
+•	clip index
+•	metadata such as codec/FPS/resolution/bitrate
+Why this is primary
+•	ffprobe is the most practical media-inspection tool
+•	OpenCV gives universal frame-level access and sanity checking
+•	this combo is simple, well understood, and good enough for V1
+Main risks
+•	corrupted-but-openable files
+•	wrong FPS metadata
+•	partial uploads
+•	timestamp discontinuities
+OpenCV’s core docs cover video I/O, video analysis, and camera-geometry related modules, which makes it a sensible foundational library for this layer. (docs.ultralytics.com)
+
+2. Telemetry-video synchronization and drift correction
+Purpose
+Align video timestamps with CAN / IMU / GPS / brake logs.
+Primary
+•	custom synchronization layer using:
+o	timestamp matching
+o	anchor-event alignment
+o	cross-correlation against speed/brake or visual motion
+Alternatives
+•	piecewise linear drift correction
+•	spline-based time warp for long trips
+•	hardware sync if customer already provides aligned streams
+Inputs
+•	video timestamps
+•	telemetry timestamps
+•	optional anchor events
+Outputs
+•	offset estimate
+•	drift estimate
+•	resampled telemetry aligned to video timebase
+•	sync quality score
+Why this is primary
+•	no off-the-shelf library will fully solve customer-specific sensor sync
+•	this must be built as a platform module, not treated as a side script
+Main risks
+•	silent drift
+•	offset changes mid-trip
+•	telemetry missing or delayed
+•	wrong trust in sync quality
+
+3. PII masking and privacy-safe review media
+Purpose
+Create review-safe clips and protect personal information.
+Primary
+•	lightweight face detector + license-plate detector
+•	OpenCV blur / mosaic masking
+•	policy-driven raw vs masked storage separation
+Alternatives
+•	segmentation-based masking
+•	customer-side anonymization before upload
+Inputs
+•	raw frames or event clips
+•	privacy policy profile
+Outputs
+•	masked review clips
+•	masking audit log
+•	retention metadata
+Why this is primary
+•	enterprise approval will depend on privacy handling
+•	masked review clips should be the default for human review
+Main risks
+•	missed faces or plates
+•	over-masking evidence
+•	inconsistent masking across frames
+•	policy mismatch by region
+For regulated deployments, GDPR and CCPA-style constraints make data minimization, retention, deletion handling, and review controls important design requirements. (Databricks Documentation)
+
+4. Preprocessing and quality assessment
+Purpose
+Normalize video enough for stable perception, while preserving evidence and tagging uncertainty.
+Primary
+•	OpenCV
+•	NumPy
+•	optional Kornia later
+Algorithms
+•	resize with aspect preservation
+•	lens undistortion if calibration exists
+•	blur estimation via Laplacian variance
+•	glare / darkness / rain heuristic tagging
+•	exposure-shift detection
+Inputs
+•	frame stream
+•	optional calibration
+•	mount profile
+Outputs
+•	normalized frames
+•	quality tags
+•	preprocessing audit metadata
+Why this is primary
+•	fast to implement
+•	easy to debug
+•	enough for offline V1
+Main risks
+•	over-normalization
+•	removing evidence
+•	unstable quality heuristics
+
+5. Cascade inference / heuristic gate
+Purpose
+Reduce compute cost by escalating only promising windows to expensive models.
+Primary
+•	deterministic pre-filter using:
+o	box-growth heuristics
+o	simple closing-rate cues
+o	abrupt brake telemetry
+o	lane occupancy change
+o	motion anomaly spikes
+Alternatives
+•	tiny learned gate model
+•	telemetry-first gate
+•	hybrid heuristic + sampling gate
+Inputs
+•	cheap scene summaries
+•	light detections
+•	optional telemetry
+Outputs
+•	candidate windows
+•	gate reasons
+•	cascade stage routing
+Why this is primary
+•	fleet-scale offline compute will otherwise get expensive fast
+•	this is the most cost-effective V1 control layer
+Main risks
+•	gating out subtle hazards
+•	biasing the heavy model toward only easy positives
+•	missing false-positive audits
+Ray Data explicitly supports scalable offline batch inference and map_batches, which makes it a strong candidate for the heavy offline stages after gating. (Ray)
+
+
+
+
+6. Object detection
+Purpose
+Detect vehicles, pedestrians, and other relevant road actors.
+Primary
+•	Ultralytics YOLO11 family
+Alternatives
+•	RT-DETR
+•	Detectron2-based Faster R-CNN / Cascade
+•	Grounding DINO later for open-vocabulary use
+Inputs
+•	normalized frames
+Outputs
+•	per-frame detections with class, bbox, confidence
+Why this is primary
+•	Ultralytics provides mature support for detection, tracking-related workflows, segmentation, pose, and export
+•	strong practical ecosystem for engineering teams
+Main risks
+•	motorcycles and pedestrians underperforming
+•	night/rain failures
+•	parked-car confusion
+Ultralytics documents YOLO11 as supporting detection, segmentation, pose, oriented boxes, and tracking-related workflows, which is why it is a practical V1 default. (docs.ultralytics.com)
+
+7. Multi-object tracking
+Purpose
+Maintain stable actor IDs and trajectories over time.
+Primary
+•	ByteTrack
+Alternatives
+•	BoT-SORT
+•	DeepSORT
+•	StrongSORT
+Inputs
+•	per-frame detections
+•	optional appearance embeddings
+Outputs
+•	actor tracks
+•	track states
+•	occlusion/lost-track metadata
+Why this is primary
+•	ByteTrack is a strong practical baseline
+•	especially useful when lower-confidence detections still need to be associated
+Main risks
+•	ID switches in dense scenes
+•	fragmented tracks under occlusion
+•	unstable hazard actor identity
+Ultralytics’ tracking docs explicitly support multiple trackers including ByteTrack and BoT-SORT, which is useful for quick comparison inside one engineering stack. (docs.ultralytics.com)
+
+8. Lane and drivable-space understanding
+Purpose
+Recover path geometry so risk is based on conflict, not just visual proximity.
+Primary
+•	SegFormer through MMSegmentation
+Alternatives
+•	YOLOP-style multitask model
+•	MapTR / richer topology-aware models later
+•	custom lane-specific stack if customer data strongly demands it
+Inputs
+•	frames
+Outputs
+•	drivable mask
+•	lane boundaries / lane region
+•	lane relation per actor
+Why this is primary
+•	modular
+•	easier to debug than a big multitask stack
+•	strong tooling support in MMSegmentation
+Main risks
+•	weak lane boundaries under worn markings
+•	poor performance in rain/night
+•	confusing parking lanes / shoulders
+MMSegmentation provides a mature segmentation toolbox, and SegFormer is documented as a simple, efficient semantic segmentation model with a hierarchical transformer encoder and lightweight decoder. (mmsegmentation.readthedocs.io)
+
+9. Monocular depth estimation
+Purpose
+Provide coarse 3D structure and actor proximity features.
+Primary
+•	Depth Anything V2
+Alternatives
+•	ZoeDepth
+•	MiDaS / DPT
+•	later condition-robust variants such as DepthAnything-AC if your data is dominated by difficult weather/lighting
+Inputs
+•	frames
+Outputs
+•	depth map
+•	per-actor depth summaries
+•	depth confidence / quality proxies
+Why this is primary
+•	strong generalization
+•	multiple model scales
+•	good fit for monocular front-camera systems
+Main risks
+•	metric inaccuracy
+•	unstable depth under glare / low texture
+•	weather-induced degradation
+Depth Anything V2 reports finer and more robust depth predictions than V1, offers multiple model sizes, and is intended for broad monocular depth scenarios, which makes it a strong V1 candidate. (arXiv)
+
+10. Ego-motion estimation
+Purpose
+Separate host-vehicle motion from actor-relative motion.
+Primary
+•	optical-flow / lane-flow / visual-motion proxy
+Alternatives
+•	ORB-SLAM3
+•	ORB-SLAM3 variants with robustness improvements
+•	telemetry-assisted ego-motion fusion
+Inputs
+•	frame sequence
+•	optional telemetry
+Outputs
+•	ego-motion proxy
+•	frame-to-frame transform estimate
+•	motion-normalized actor features
+Why this is primary
+•	simpler and cheaper for V1
+•	enough to support offline threat features initially
+Main risks
+•	drift
+•	failure in low-texture scenes
+•	vibration / bumps
+•	tunnel / night instability
+ORB-SLAM3 is a strong later option because it supports monocular, stereo, RGB-D, and visual-inertial SLAM and is designed for robust, accurate mapping/localization. (arXiv)
+
+11. Threat-metric engine
+Purpose
+Compute interpretable per-actor risk features.
+Primary
+•	deterministic feature engine:
+o	TTC proxy
+o	time headway
+o	closing speed
+o	lane conflict
+o	projected overlap
+o	cut-in score
+o	stopped-lead-vehicle score
+o	cross-traffic conflict
+Alternatives
+•	learned feature extractor on top of track states
+•	richer trajectory-simulation engine later
+Inputs
+•	tracks
+•	depth summaries
+•	lane/drivable maps
+•	ego-motion / telemetry
+Outputs
+•	actor threat vectors
+•	scene threat summary
+•	deterministic baseline score
+Why this is primary
+•	required for explainability
+•	required for Day-0 baseline
+•	useful for gating and fusion
+Main risks
+•	monocular TTC noise
+•	lane assignment errors
+•	bad sync corrupting kinematics
+
+12. Deterministic baseline engine
+Purpose
+Establish a non-ML benchmark floor before transformer and graph models.
+Primary
+•	thresholded threat metrics + rule logic
+Alternatives
+•	simple logistic regression on threat features
+•	rule ensembles per scenario type
+Inputs
+•	threat metrics
+•	tracks
+•	lane/depth/ego-motion signals
+Outputs
+•	baseline risk score
+•	baseline precision/recall
+•	candidate windows for heavier stages
+Why this is primary
+•	lets you prove ML ROI later
+•	gives leadership an understandable baseline
+•	catches obvious engineering issues early
+Main risks
+•	high false positives
+•	simplistic cut-in handling
+•	overreliance on noisy depth/TTC
+
+13. Temporal risk model
+Purpose
+Model short-horizon clip-level risk over time.
+Primary
+•	VideoMAE
+Alternatives
+•	V-JEPA 2 representations
+•	TimeSformer
+•	Video Swin
+•	simpler LSTM / TCN over structured features
+Inputs
+•	clip windows
+•	optional fused perception features
+Outputs
+•	multi-horizon risk probabilities
+•	scene risk embedding
+Why this is primary
+•	strong video representation option
+•	attractive when labeled data is limited
+Main risks
+•	expensive inference
+•	spurious salience learning
+•	weak hazard localization by itself
+VideoMAE is explicitly presented as a data-efficient self-supervised video pretraining method, while V-JEPA 2 is positioned by Meta as a self-supervised video model for understanding, prediction, and planning. (arXiv)
+
+
+14. Actor-interaction model
+Purpose
+Reason over ego–actor and actor–actor interactions.
+Primary
+•	graph-based interaction model using PyTorch Geometric or DGL
+Alternatives
+•	set transformer over actors
+•	temporal MLP over pairwise features
+•	graph-free actor ranking baseline
+Inputs
+•	actor states over time
+•	pairwise relation features
+•	lane/depth context
+Outputs
+•	per-actor hazard scores
+•	top hazard actor
+•	interaction embedding
+Why this is primary
+•	best answer to “with whom will ego collide?”
+•	stronger localization than scene-only models
+Main risks
+•	bad tracks poison the graph
+•	graph complexity can grow in dense scenes
+•	needs good relation engineering
+
+15. Fusion and calibration
+Purpose
+Fuse deterministic and learned signals into final risk.
+Primary
+•	shallow MLP or logistic calibration
+•	XGBoost / LightGBM as practical structured-feature fusion backup
+Alternatives
+•	deeper end-to-end fusion later
+•	Bayesian calibration layers
+Inputs
+•	deterministic baseline score
+•	threat metrics
+•	temporal model outputs
+•	graph model outputs
+•	quality regime
+•	sync quality
+Outputs
+•	final risk by horizon
+•	hazard actor
+•	impact sector
+•	reason code
+•	confidence
+Why this is primary
+•	simple
+•	interpretable
+•	stable for V1
+Main risks
+•	overfitting to feature quirks
+•	poor calibration across conditions
+•	disagreement between scene-global and actor-local signals
+
+
+16. Explanation and review package generation
+Purpose
+Produce consistent analyst-facing explanations and evidence.
+Primary
+•	structured reason-code classifier + template-based narrative
+Alternatives
+•	secondary VLM analyst-assist layer later
+Inputs
+•	fused outputs
+•	threat metrics
+•	hazard actor state
+•	event clip
+Outputs
+•	reason code
+•	review packet
+•	pre/post event clips
+•	masked review media
+Why this is primary
+•	deterministic
+•	stable
+•	safer than free-form generation for V1
+Main risks
+•	reason taxonomy too coarse
+•	mismatch between reason code and analyst intuition
+
+17. Annotation, data QA, and review operations
+Purpose
+Human-in-the-loop labeling, QA, and error analysis.
+Primary
+•	CVAT for annotation and QA
+•	FiftyOne for dataset exploration, slice analysis, and model-prediction review
+Alternatives
+•	Label Studio as a lighter alternative
+•	custom internal review UI later
+Why this is primary
+•	CVAT is designed as an enterprise-grade annotation platform with QA, automation, and collaboration
+•	FiftyOne is strong for visualizing videos, labels, metadata, and model predictions together
+Main risks
+•	inconsistent annotation policy
+•	review bottlenecks
+•	weak hard-negative mining discipline
+CVAT positions itself as an enterprise-grade platform for image, video, and 3D annotation with QA and collaboration, and FiftyOne is built for interactive dataset/model analysis over images, videos, labels, metadata, and predictions. (docs.cvat.ai)
+
+18. Orchestration, experiment tracking, and data lineage
+Purpose
+Run the offline pipeline reproducibly at scale.
+Primary
+•	Prefect or Airflow for orchestration
+•	Ray Data for scalable offline batch inference
+•	MLflow for experiment/model tracking
+•	DVC for data/pipeline versioning
+Alternatives
+•	Kubeflow later if platform standardization requires it
+•	Weights & Biases instead of MLflow
+•	lakeFS or Delta-based data lineage depending on enterprise stack
+Why this is primary
+•	Prefect is strong for Python-first workflows
+•	Airflow is strong for DAG-style orchestration
+•	Ray Data is strong for distributed batch inference
+•	MLflow + DVC is a very practical reproducibility combo
+Main risks
+•	fragmented lineage between data and runs
+•	orchestration complexity too early
+•	scaling costs if gating is weak
+Prefect documents a Python-first orchestration workflow model; Airflow centers on DAG-based task orchestration; MLflow Tracking logs params, code versions, metrics, and artifacts; and DVC pipelines give versioned, reproducible ML/data workflows. (Prefect)
+
+Recommended V1 default stack
+If we had to start implementation now, my default V1 stack would be:
+•	Media / ingest: ffmpeg + OpenCV
+•	Sync: custom offset/drift correction
+•	Privacy: plate/face masking + masked review clips
+•	Gate: deterministic kinematic + motion heuristics
+•	Detection: YOLO11 family
+•	Tracking: ByteTrack
+•	Lane / drivable: SegFormer via MMSegmentation
+•	Depth: Depth Anything V2
+•	Ego motion: visual-motion proxy first
+•	Deterministic baseline: TTC / overlap / lane conflict / cut-in rules
+•	Temporal model: structured baseline first, VideoMAE next
+•	Actor graph: PyTorch Geometric / DGL
+•	Fusion: shallow MLP or XGBoost
+•	Explanation: structured reason code
+•	Annotation / QA: CVAT + FiftyOne
+•	Ops: Prefect or Airflow + Ray + MLflow + DVC
+Recommended lock order
+Lock these first:
+1.	output contract
+2.	label schema + benchmark
+3.	media / sync / privacy interfaces
+4.	deterministic baseline
+5.	detector / tracker / lane / depth stack
+6.	temporal + graph models
+7.	fusion + review workflow
+
+Phased Development Plan
+Offline Enterprise-Grade Ego-Centric Collision / Near-Collision Intelligence System
+This plan assumes:
+•	the system is offline only
+•	customer data is not fully available yet
+•	the first goal is to build a usable enterprise analytics pipeline, not just a model
+•	every phase must end with a usable artifact
+The guiding principle is:
+Do not jump to advanced models before the data contracts, baseline logic, and review workflow are stable.
+Phase 0 — Specifications, Definitions, and Benchmark Foundation
+Goal
+Define exactly what the system is, what it predicts, how success will be measured, and what data it needs.
+This phase is about removing ambiguity.
+Main questions to answer
+•	What exactly is a collision?
+•	What exactly is a near-collision?
+•	What counts as ego-relevant vs non-ego event?
+•	What outputs should the system produce?
+•	What labels do we need?
+•	What benchmark metrics will we use?
+•	What data and telemetry are expected from the customer?
+•	What privacy constraints must be respected?
+Work to do
+1. Problem definition
+Write the core system definition:
+•	ego-centric hazard anticipation
+•	collision / near-collision prediction
+•	hazard actor identification
+•	impact sector
+•	reason code
+•	time-to-event
+2. Output contract
+Define the event schema:
+•	risk score
+•	horizon
+•	hazard actor
+•	bbox
+•	impact sector
+•	reason
+•	severity
+•	evidence clip links
+•	quality flags
+•	sync quality
+•	confidence
+3. Label schema
+Define:
+•	collision
+•	near-collision
+•	normal
+•	ego involved yes/no
+•	event time
+•	alert time
+•	first visible hazard time
+•	hazard actor
+•	reason code
+•	context labels
+4. Benchmark specification
+Define:
+•	tasks
+•	metrics
+•	split rules
+•	leakage prevention
+•	failure slices
+•	condition-wise analysis
+5. Customer data requirements
+Define:
+•	camera metadata needed
+•	video format requirements
+•	telemetry expectations
+•	label expectations
+•	privacy and retention expectations
+6. Privacy and governance assumptions
+Define:
+•	whether raw clips are stored
+•	whether masked clips are default for review
+•	who can access raw media
+•	what is retained and for how long
+Deliverables
+At the end of Phase 0, you should have:
+•	problem definition note
+•	output contract
+•	label schema
+•	benchmark specification
+•	customer data requirements checklist
+•	privacy/governance note
+•	failure taxonomy draft
+Exit criteria
+Phase 0 is complete only if:
+•	all stakeholders agree on what the system predicts
+•	benchmark metrics are frozen
+•	event definitions are frozen
+•	review outputs are frozen
+•	downstream engineering can start without ambiguity
+Biggest risk
+If Phase 0 is weak, every later phase becomes unstable.
+
+
+
+
+Phase 0.5 — Deterministic Baseline
+Goal
+Create a non-ML baseline that can already mine potentially risky clips and establish a benchmark floor.
+This phase is critical because it gives:
+•	early value
+•	an interpretable benchmark
+•	candidate windows for later ML
+•	a way to prove ML ROI later
+Why this phase matters
+Before training advanced models, you must know:
+•	what a simple TTC / overlap / lane-conflict system can do
+•	how many false positives appear
+•	what hard negatives look like
+•	whether the data and perception pipeline are even usable
+Work to do
+1. Media inventory and validation
+Build:
+•	media probe
+•	video validation
+•	clip chunking
+•	dataset inventory
+2. Telemetry-video synchronization prototype
+If telemetry exists:
+•	align timestamps
+•	estimate offset
+•	estimate drift
+•	produce sync quality
+3. Basic preprocessing and quality tagging
+Build:
+•	resize
+•	color normalization
+•	blur/glare/night tagging
+•	optional undistortion
+4. First-pass perception
+Integrate:
+•	object detector
+•	tracker
+•	lane/drivable estimation if possible
+•	coarse depth if possible
+Do not over-optimize yet. This is for baseline extraction.
+5. Threat-metric engine
+Implement:
+•	TTC proxy
+•	box growth
+•	lane conflict
+•	projected overlap
+•	cut-in heuristic
+•	stopped-lead-vehicle heuristic
+•	cross-traffic heuristic
+6. Candidate window miner
+Use the deterministic score to:
+•	rank risky windows
+•	keep top-K clips
+•	store background non-risk windows
+•	build hard-negative examples
+7. Baseline evaluation
+Measure:
+•	rough recall on known events
+•	false positives per hour
+•	top-K clip precision
+•	obvious failure modes
+Deliverables
+At the end of Phase 0.5, you should have:
+•	a deterministic risk scoring pipeline
+•	candidate window generation
+•	first baseline event rankings
+•	sync diagnostics
+•	perception sanity outputs
+•	a baseline evaluation report
+Exit criteria
+Phase 0.5 is complete only if:
+•	the system can rank suspicious/risky windows from long videos
+•	baseline outputs are interpretable
+•	the false-positive profile is visible
+•	hard negatives can be collected
+•	perception outputs are stable enough to support later ML
+Biggest risk
+Jumping to advanced temporal models before this is working.
+
+Phase 1 — Perception and Mining Baseline
+Goal
+Turn the deterministic pipeline into a usable offline event-mining system with reviewable outputs.
+This is the first phase where the system starts looking like a real product.
+Core idea
+Phase 0.5 gave you “scores.”
+Phase 1 gives you:
+•	event objects
+•	evidence clips
+•	hazard tracks
+•	masked review packages
+•	searchable metadata
+Work to do
+1. Harden the perception stack
+Improve:
+•	detection stability
+•	tracking continuity
+•	lane/drivable assignment
+•	depth summaries
+•	ego-motion proxy
+2. Build actor state and structured features
+For each tracked actor, compute:
+•	class
+•	position
+•	velocity
+•	depth summary
+•	lane relation
+•	in-path score
+•	occlusion score
+•	cut-in score
+•	visibility duration
+3. Event segmentation
+Convert risk timelines into actual event windows:
+•	start time
+•	peak time
+•	end time
+•	severity
+4. Evidence packaging
+Export:
+•	pre-event clip
+•	post-event clip
+•	masked review clip
+•	hazard actor overlays
+•	event metadata
+5. Review package creation
+Produce analyst-ready outputs:
+•	event summary
+•	reason primitives
+•	quality flags
+•	sync quality
+•	candidate cause
+6. Searchable event storage
+Store:
+•	event records
+•	clip links
+•	trip IDs
+•	actor metadata
+•	risk scores
+•	review state placeholders
+7. Background sample management
+Keep a structured set of:
+•	normal windows
+•	hard negatives
+•	ambiguous cases
+This becomes important later for benchmark and training.
+Deliverables
+At the end of Phase 1, you should have:
+•	an offline mining pipeline
+•	event segmentation
+•	evidence clip generation
+•	masked review packages
+•	searchable event records
+•	candidate hard-negative repository
+Exit criteria
+Phase 1 is complete only if:
+•	the pipeline can process raw trips end to end
+•	events are reviewable by humans
+•	evidence clips are usable
+•	privacy-safe review flow exists
+•	the mined output is good enough for labeling and product demos
+Biggest risk
+If the review package is weak, analyst feedback will be weak, and later ML phases will suffer.
+
+Phase 2 — Learned Hazard Engine
+Goal
+Add ML models that improve anticipation quality, hazard localization, and explanation quality beyond the deterministic baseline.
+This is where the system becomes a real hybrid hazard engine.
+Core idea
+Do not replace the baseline.
+Augment it.
+The learned system should sit on top of:
+•	perception outputs
+•	structured actor states
+•	deterministic threat features
+Work to do
+1. Build training datasets
+Create:
+•	temporal clip datasets
+•	actor-graph datasets
+•	reason-code datasets
+•	fusion datasets
+These must use frozen benchmark splits.
+2. Train temporal risk model
+Purpose:
+•	multi-horizon risk prediction
+•	scene-level risk embedding
+Example outputs:
+•	p_event_500ms
+•	p_event_1000ms
+•	p_event_1500ms
+3. Train actor interaction / graph model
+Purpose:
+•	predict per-actor hazard
+•	identify primary hazard actor
+•	model multi-agent interaction
+4. Train reason-code head
+Purpose:
+•	structured explanation
+•	cause classification
+•	better analyst review support
+5. Train impact-sector head
+Purpose:
+•	front-left / front-center / etc.
+6. Build fusion layer
+Fuse:
+•	deterministic baseline
+•	threat metrics
+•	temporal model outputs
+•	graph model outputs
+•	quality regime
+•	sync quality
+7. Calibration
+Calibrate:
+•	probabilities
+•	event ranking
+•	severity thresholds
+8. Benchmark evaluation
+Compare against:
+•	deterministic baseline
+•	prior model versions
+•	benchmark slices
+Deliverables
+At the end of Phase 2, you should have:
+•	temporal risk model
+•	graph-based hazard model
+•	reason and impact heads
+•	fused scoring engine
+•	benchmark report proving gain over baseline
+Exit criteria
+Phase 2 is complete only if:
+•	ML models outperform the deterministic baseline on agreed metrics
+•	hazard actor output is stable enough to review
+•	reason-code quality is acceptable
+•	gains are visible on important slices, not just aggregate metrics
+Biggest risk
+If labels, hard negatives, or benchmark splits are weak, this phase will produce impressive-looking but untrustworthy models.
+
+Phase 3 — Review Platform and MLOps
+Goal
+Turn the offline hazard engine into a true enterprise analytics platform with review, feedback, lineage, and retraining.
+This phase is what separates:
+•	a good ML pipeline
+from
+•	a real enterprise system
+Work to do
+1. Review workflow
+Implement review states such as:
+•	new
+•	review_ready
+•	under_review
+•	confirmed_positive
+•	confirmed_false_positive
+•	ambiguous
+•	sync_issue
+•	privacy_issue
+•	data_quality_issue
+•	queued_for_retraining
+2. Annotation integration
+Connect:
+•	CVAT or annotation tool
+•	review exports
+•	label import
+•	review decisions
+3. Dataset QA and slice analysis
+Using FiftyOne or similar:
+•	inspect hard negatives
+•	inspect failure slices
+•	inspect event coverage
+•	inspect class imbalance
+4. Experiment and artifact tracking
+Add:
+•	MLflow
+•	DVC
+•	model lineage
+•	dataset lineage
+•	threshold pack lineage
+5. Replay evaluation
+Build systematic replay jobs:
+•	run current model on historical corpora
+•	compare against previous versions
+•	compare against deterministic baseline
+•	produce slice reports
+6. Cost analysis
+Track:
+•	how many windows were gated out
+•	how many reached heavy models
+•	cost per driving hour
+•	compute spent per useful event surfaced
+7. Hard-negative mining loop
+Every confirmed false positive becomes:
+•	candidate hard negative
+•	benchmark slice entry
+•	retraining signal
+8. Governance and privacy auditability
+Track:
+•	masking version
+•	raw vs masked access
+•	retention class
+•	review access logs
+•	privacy issue states
+Deliverables
+At the end of Phase 3, you should have:
+•	reviewable enterprise platform
+•	annotation + feedback loop
+•	dataset and model lineage
+•	replay evaluation pipeline
+•	slice analysis dashboards
+•	cost reports
+•	retraining-ready false-positive pipeline
+Exit criteria
+Phase 3 is complete only if:
+•	feedback from review flows back into data and model updates
+•	model versions are reproducible
+•	failure modes are visible in dashboards
+•	privacy and review handling are auditable
+•	the system can be operated, not just demonstrated
+Biggest risk
+Without strong review workflow and lineage, the system becomes a one-off ML project instead of a product.
+
+Summary of the phases
+Phase 0
+Define the system.
+Phase 0.5
+Build the deterministic baseline and candidate miner.
+Phase 1
+Build the offline perception + event mining pipeline.
+Phase 2
+Add learned hazard prediction and fusion.
+Phase 3
+Add review operations, MLOps, feedback, and enterprise analytics.
+
+What each phase gives the business
+Phase 0
+Clarity and alignment.
+Phase 0.5
+First measurable benchmark floor and early risky clip mining.
+Phase 1
+A usable offline review and evidence system.
+Phase 2
+Higher-quality hazard intelligence with actor-level reasoning.
+Phase 3
+A scalable enterprise platform with continuous improvement.
+
+
+
+
+
+Executive Summary
+Offline Ego-Centric Hazard Anticipation & Video Analytics Platform
+We are building an enterprise-grade offline video analytics platform for ego-centric hazard anticipation using front-mounted vehicle camera footage. The system is designed to identify and analyse collision and near-collision risk, determine the primary hazard actor, estimate when the event became predictable, and generate structured, explainable event outputs for review, analytics, and future model improvement.
+What we are building
+The platform will process recorded driving videos and produce:
+•	collision / near-collision risk signals 
+•	hazard actor localization 
+•	event timing and severity 
+•	reason codes for why an event was flagged 
+•	evidence clips and searchable event records 
+•	trip-level and fleet-level safety intelligence 
+This is not a generic accident classifier. It is an ego-relevant hazard intelligence system designed to support offline review, event mining, driver-risk analysis, and future product expansion.
+
+Why offline-first
+We are intentionally starting with an offline-first architecture because it gives us the strongest path to quality, explainability, and controlled development.
+An offline approach allows us to:
+•	use heavier, higher-accuracy models 
+•	run multi-pass processing and track refinement 
+•	use richer temporal context for event understanding 
+•	establish benchmark quality before real-time constraints are introduced 
+•	build high-value review and analytics capabilities immediately 
+This also reduces delivery risk in the early phase, because we can first solve the harder problem of correctness and usefulness, before optimizing for latency and edge deployment.
+Why hybrid architecture
+The system is being designed as a hybrid hazard engine, not as a single black-box model.
+It combines:
+•	structured scene perception 
+•	actor tracking and geometry reasoning 
+•	deterministic threat metrics such as TTC / overlap / lane conflict 
+•	learned temporal risk models 
+•	multi-actor interaction modeling 
+•	calibrated fusion and explanation layers 
+This architecture is the right choice because it gives us:
+•	stronger interpretability 
+•	better control over false positives 
+•	easier debugging and benchmarking 
+•	cleaner integration of future data sources such as telemetry 
+•	a more reliable path from prototype to enterprise deployment 
+In short, it balances AI capability with engineering discipline.
+Why the design is scalable and future-proof
+The platform is being designed with clear module boundaries and stable interfaces, so that each layer can evolve independently without forcing a redesign of the whole system.
+This makes it future-proof in four ways:
+1.	Model flexibility
+We can upgrade detectors, temporal models, graph models, or explanation layers without changing the full pipeline. 
+2.	Deployment flexibility
+Although V1 is offline, the architecture keeps a clean path for future optimization and selective migration toward edge or near-real-time use cases. 
+3.	Data and customer flexibility
+The system is built around explicit contracts for video, telemetry, labels, privacy controls, and review outputs, making it adaptable to different customer environments. 
+4.	Continuous improvement loop
+The design includes review workflows, hard-negative mining, replay evaluation, and model lineage, so the platform becomes better over time instead of remaining a one-time model delivery. 
+Strategic outcome
+This approach gives us a practical, defensible first product with immediate business value in:
+•	hazard and near-miss mining 
+•	deep video review 
+•	safety analytics 
+•	root-cause investigation 
+•	future driver-risk and fleet intelligence use cases 
+At the same time, it creates the technical foundation for later expansion into:
+•	online advisory systems 
+•	broader driving behaviour analytics 
+•	richer multimodal safety intelligence 
+Recommended delivery path
+We propose a phased rollout:
+•	Phase 0: specifications, labels, and benchmark definition 
+•	Phase 0.5: deterministic baseline and candidate event mining 
+•	Phase 1: perception-driven offline event mining pipeline 
+•	Phase 2: learned hazard engine and fusion 
+•	Phase 3: review platform, MLOps, and continuous improvement loop
+
