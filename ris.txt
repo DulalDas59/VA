@@ -1,740 +1,499 @@
-# Phase-1 Collision / Near-Collision Review Intelligence System
-
-## VP / AI Research Head Presentation Content
-
----
-
-# 1. Presentation Objective
-
-This presentation is designed to communicate a **Phase-1 technical approach** for an **AI-assisted collision / near-collision review intelligence system**.
-
+Phase-1 Collision / Near-Collision Review Intelligence System
+VP / AI Research Head Presentation Content
+ 
+1. Presentation Objective
+This presentation is designed to communicate a Phase-1 technical approach for an AI-assisted collision / near-collision review intelligence system.
 The presentation is intentionally scoped to:
-
-* collision,
-* near collision,
-* possible collision,
-* no collision,
-* trigger reasoning,
-* telemetry / audio / video evidence alignment,
-* and reviewer decision support.
-
-This presentation should **not** position the initiative as:
-
-* a full hazard platform,
-* a complete replacement of manual review,
-* or a fully automated end-to-end adjudication engine.
-
+•	collision,
+•	near collision,
+•	possible collision,
+•	no collision,
+•	trigger reasoning,
+•	telemetry / audio / video evidence alignment,
+•	and reviewer decision support.
+This presentation should not position the initiative as:
+•	a full hazard platform,
+•	a complete replacement of manual review,
+•	or a fully automated end-to-end adjudication engine.
 The Phase-1 framing is:
-
-**Human-in-the-loop AI-assisted review intelligence for collision / near-collision events.**
-
----
-
-# 2. Core Message for Leadership
-
-## 2.1 What we are building
-
-We are building an **offline multimodal review intelligence system** that uses:
-
-* event video,
-* event audio,
-* telemetry,
-* existing customer trigger and outcome taxonomy,
-* and customer review policy / behavior definitions,
-
+Human-in-the-loop AI-assisted review intelligence for collision / near-collision events.
+ 
+2. Core Message for Leadership
+2.1 What we are building
+We are building an offline multimodal review intelligence system that uses:
+•	event video,
+•	event audio,
+•	telemetry,
+•	existing customer trigger and outcome taxonomy,
+•	and customer review policy / behavior definitions,
 to generate structured reviewer assistance for collision / near-collision event analysis.
-
-## 2.2 Why this matters
-
+2.2 Why this matters
 The customer’s current review process is manual, repetitive, and cognitively demanding.
-
 The opportunity is to:
-
-* reduce reviewer effort,
-* improve classification consistency,
-* align video and telemetry evidence faster,
-* accelerate triage of critical events,
-* and create searchable reviewed-event intelligence.
-
-## 2.3 What success means in Phase 1
-
-Success in this phase does **not** mean replacing the reviewer.
-
+•	reduce reviewer effort,
+•	improve classification consistency,
+•	align video and telemetry evidence faster,
+•	accelerate triage of critical events,
+•	and create searchable reviewed-event intelligence.
+2.3 What success means in Phase 1
+Success in this phase does not mean replacing the reviewer.
 Success means:
-
-* better review speed,
-* more consistent trigger and outcome classification,
-* stronger evidence packaging,
-* and human-validated AI-assisted review support.
-
----
-
-# 3. Recommended Slide Narrative
-
-## Slide 1 — Title
-
-**Phase-1 Collision / Near-Collision Review Intelligence System**
-
+•	better review speed,
+•	more consistent trigger and outcome classification,
+•	stronger evidence packaging,
+•	and human-validated AI-assisted review support.
+ 
+3. Recommended Slide Narrative
+Slide 1 — Title
+Phase-1 Collision / Near-Collision Review Intelligence System
 Subtitle:
-
-* AI-Assisted Event Review Intelligence
-* Video + Audio + Telemetry + Review KB
-* Human-in-the-Loop Decision Support
-
----
-
-## Slide 2 — Current Challenge: Manual Event Review
-
+•	AI-Assisted Event Review Intelligence
+•	Video + Audio + Telemetry + Review KB
+•	Human-in-the-Loop Decision Support
+ 
+Slide 2 — Current Challenge: Manual Event Review
 Purpose:
 Explain the current analyst burden and why assistance is needed.
-
-### Main points
-
-* Every event requires repeated replay and manual interpretation.
-* Reviewers must determine:
-
-  * root cause,
-  * trigger,
-  * outcome,
-  * supporting context,
-  * and reviewer comments.
-* The process is time-consuming and potentially inconsistent.
-* Telemetry and video must be manually correlated.
-* The reviewer must interpret nuanced categories like:
-
-  * near collision,
-  * near collision - unavoidable,
-  * possible collision,
-  * and no collision.
-
-### Suggested message
-
-**The opportunity is not to remove the analyst, but to reduce review effort and improve consistency with AI-assisted evidence and decision support.**
-
----
-
-## Slide 3 — What We Will Do
-
+Main points
+•	Every event requires repeated replay and manual interpretation.
+•	Reviewers must determine:
+o	root cause,
+o	trigger,
+o	outcome,
+o	supporting context,
+o	and reviewer comments.
+•	The process is time-consuming and potentially inconsistent.
+•	Telemetry and video must be manually correlated.
+•	The reviewer must interpret nuanced categories like:
+o	near collision,
+o	near collision - unavoidable,
+o	possible collision,
+o	and no collision.
+Suggested message
+The opportunity is not to remove the analyst, but to reduce review effort and improve consistency with AI-assisted evidence and decision support.
+ 
+Slide 3 — What We Will Do
 Purpose:
 Clearly define the Phase-1 scope.
-
-### Title suggestion
-
-**What We Will Do in Phase 1**
-
-### Product framing
-
-**Collision / Near-Collision Review Intelligence System**
-
+Title suggestion
+What We Will Do in Phase 1
+Product framing
+Collision / Near-Collision Review Intelligence System
 Alternative labels:
-
-* AI-Assisted Event Review Intelligence
-* Collision Review Copilot
-* Event Review Decision Support System
-
-### System goal
-
+•	AI-Assisted Event Review Intelligence
+•	Collision Review Copilot
+•	Event Review Decision Support System
+System goal
 Build an offline AI-assisted collision / near-collision event review system that uses:
-
-* event video,
-* event audio,
-* telemetry,
-* existing trigger and outcome taxonomy,
-* and customer review behavior definitions,
-
+•	event video,
+•	event audio,
+•	telemetry,
+•	existing trigger and outcome taxonomy,
+•	and customer review behavior definitions,
 to generate structured reviewer assistance.
-
-### What the system should answer
-
+What the system should answer
 For each event clip, the system should answer:
-
-* What is the likely event outcome?
-* What is the likely trigger?
-* What evidence in the clip, audio, and telemetry supports that interpretation?
-* Is there likely collision or possible collision?
-* Is braking / speed / lane departure / following distance behavior visible in telemetry and video?
-* What reviewer comments or reason summaries should be surfaced?
-
-### In-scope for Phase 1
-
-* collision / near-collision outcome assistance,
-* trigger prediction / ranking,
-* telemetry-video-audio synchronization,
-* structured evidence extraction,
-* event review acceleration,
-* review consistency improvement,
-* searchable reviewed-event intelligence.
-
-### What the product outputs
-
+•	What is the likely event outcome?
+•	What is the likely trigger?
+•	What evidence in the clip, audio, and telemetry supports that interpretation?
+•	Is there likely collision or possible collision?
+•	Is braking / speed / lane departure / following distance behavior visible in telemetry and video?
+•	What reviewer comments or reason summaries should be surfaced?
+In-scope for Phase 1
+•	collision / near-collision outcome assistance,
+•	trigger prediction / ranking,
+•	telemetry-video-audio synchronization,
+•	structured evidence extraction,
+•	event review acceleration,
+•	review consistency improvement,
+•	searchable reviewed-event intelligence.
+What the product outputs
 For each event, the system should generate:
-
-* likely outcome suggestion,
-* likely trigger suggestion,
-* confidence score,
-* telemetry-aligned evidence summary,
-* audio-backed critical moment markers,
-* key visual evidence points,
-* likely collision / near-collision markers,
-* reviewer-ready structured summary,
-* searchable event metadata.
-
-### Leadership message
-
-**Phase 1 is an AI-assisted review system, not a full automation program.**
-
----
-
-## Slide 4 — Why Multimodal AI Assistance is Needed
-
+•	likely outcome suggestion,
+•	likely trigger suggestion,
+•	confidence score,
+•	telemetry-aligned evidence summary,
+•	audio-backed critical moment markers,
+•	key visual evidence points,
+•	likely collision / near-collision markers,
+•	reviewer-ready structured summary,
+•	searchable event metadata.
+Leadership message
+Phase 1 is an AI-assisted review system, not a full automation program.
+ 
+Slide 4 — Why Multimodal AI Assistance is Needed
 Purpose:
 Show why video alone is insufficient.
-
-### Inputs we will use
-
-* Event video
-* Event audio
-* Telemetry
-* Customer review KB / behavior definitions
-
-### Why each matters
-
-**Video**
-
-* scene context,
-* hazard motion,
-* lane departure cues,
-* critical distance context,
-* pedestrian / vehicle context.
-
-**Audio**
-
-* impact-like sounds,
-* horn cues,
-* abrupt acoustic peaks,
-* rough surface vs true event disambiguation,
-* key moment localization.
-
-**Telemetry**
-
-* speed,
-* acceleration / deceleration,
-* braking,
-* IMU / motion dynamics,
-* trigger timing context.
-
-**Review KB / Definitions**
-
-* outcome selection rules,
-* trigger interpretation rules,
-* collision vs possible collision guidance,
-* review consistency logic.
-
-### Leadership message
-
-**This is a multimodal evidence problem. Better review support comes from combining scene evidence, acoustic evidence, kinematic evidence, and policy logic.**
-
----
-
-## Slide 5 — Technical Design Philosophy
-
+Inputs we will use
+•	Event video
+•	Event audio
+•	Telemetry
+•	Customer review KB / behavior definitions
+Why each matters
+Video
+•	scene context,
+•	hazard motion,
+•	lane departure cues,
+•	critical distance context,
+•	pedestrian / vehicle context.
+Audio
+•	impact-like sounds,
+•	horn cues,
+•	abrupt acoustic peaks,
+•	rough surface vs true event disambiguation,
+•	key moment localization.
+Telemetry
+•	speed,
+•	acceleration / deceleration,
+•	braking,
+•	IMU / motion dynamics,
+•	trigger timing context.
+Review KB / Definitions
+•	outcome selection rules,
+•	trigger interpretation rules,
+•	collision vs possible collision guidance,
+•	review consistency logic.
+Leadership message
+This is a multimodal evidence problem. Better review support comes from combining scene evidence, acoustic evidence, kinematic evidence, and policy logic.
+ 
+Slide 5 — Technical Design Philosophy
 Purpose:
 Describe the architecture approach at a leadership-friendly level.
-
-### Core philosophy
-
+Core philosophy
 The system should be built as an:
-
-**offline, hybrid, evidence-driven review intelligence pipeline**
-
-### This means combining
-
-* video understanding,
-* audio cue extraction,
-* telemetry synchronization,
-* structured trigger and outcome reasoning,
-* deterministic review-support features,
-* learned classification models,
-* and evidence packaging for human review.
-
-### Why offline-first is right
-
-* allows heavier, higher-accuracy models,
-* allows multi-pass processing,
-* allows stronger synchronization,
-* allows richer explanation,
-* reduces deployment risk,
-* supports a practical first enterprise release.
-
-### Why hybrid AI is right
-
-* deterministic logic helps interpretability,
-* learned models improve ranking and classification,
-* KB-backed policy logic improves alignment with customer definitions,
-* fusion improves robustness.
-
----
-
-## Slide 6 — Approach Flow
-
+offline, hybrid, evidence-driven review intelligence pipeline
+This means combining
+•	video understanding,
+•	audio cue extraction,
+•	telemetry synchronization,
+•	structured trigger and outcome reasoning,
+•	deterministic review-support features,
+•	learned classification models,
+•	and evidence packaging for human review.
+Why offline-first is right
+•	allows heavier, higher-accuracy models,
+•	allows multi-pass processing,
+•	allows stronger synchronization,
+•	allows richer explanation,
+•	reduces deployment risk,
+•	supports a practical first enterprise release.
+Why hybrid AI is right
+•	deterministic logic helps interpretability,
+•	learned models improve ranking and classification,
+•	KB-backed policy logic improves alignment with customer definitions,
+•	fusion improves robustness.
+ 
+Slide 6 — Approach Flow
 Purpose:
 Show the end-to-end processing flow.
-
-### Title suggestion
-
-**Multimodal Review Intelligence Processing Flow**
-
-### Inputs
-
-* Event Video
-* Event Audio
-* Telemetry
-* Customer Review KB / Behavior Definitions
-
-### Processing stages
-
-#### Stage 1 — Event Ingestion and Validation
-
-* validate event clip,
-* extract media metadata,
-* create structured event inventory.
-
-#### Stage 2 — Multimodal Synchronization
-
-* telemetry-video sync,
-* audio-video alignment,
-* sync offset and drift estimation,
-* timing quality scoring.
-
-#### Stage 3 — Preprocessing and Quality Analysis
-
-* frame normalization,
-* audio normalization,
-* glare / blur / darkness / lens obstruction checks,
-* event quality tagging.
-
-#### Stage 4 — Feature Extraction
-
-* video signal understanding,
-* object / motion understanding,
-* braking / speed / lane-related cues,
-* acoustic event peak extraction,
-* telemetry feature extraction.
-
-#### Stage 5 — Review Intelligence Reasoning
-
-* trigger reasoning engine,
-* outcome reasoning engine,
-* deterministic review-support rules,
-* KB-aligned policy logic,
-* confidence scoring.
-
-#### Stage 6 — Review Assist Package Generation
-
-* likely trigger,
-* likely outcome,
-* key evidence moments,
-* telemetry-aligned summary,
-* reviewer-ready structured comments,
-* searchable event record.
-
-#### Stage 7 — Human Validation and Submission
-
-* reviewer reviews AI suggestions,
-* reviewer edits if needed,
-* reviewer submits final decision.
-
-### Leadership message
-
-**The system supports the reviewer across the workflow, but final adjudication remains human-controlled.**
-
----
-
-## Slide 7 — Technical Module Breakdown
-
+Title suggestion
+Multimodal Review Intelligence Processing Flow
+Inputs
+•	Event Video
+•	Event Audio
+•	Telemetry
+•	Customer Review KB / Behavior Definitions
+Processing stages
+Stage 1 — Event Ingestion and Validation
+•	validate event clip,
+•	extract media metadata,
+•	create structured event inventory.
+Stage 2 — Multimodal Synchronization
+•	telemetry-video sync,
+•	audio-video alignment,
+•	sync offset and drift estimation,
+•	timing quality scoring.
+Stage 3 — Preprocessing and Quality Analysis
+•	frame normalization,
+•	audio normalization,
+•	glare / blur / darkness / lens obstruction checks,
+•	event quality tagging.
+Stage 4 — Feature Extraction
+•	video signal understanding,
+•	object / motion understanding,
+•	braking / speed / lane-related cues,
+•	acoustic event peak extraction,
+•	telemetry feature extraction.
+Stage 5 — Review Intelligence Reasoning
+•	trigger reasoning engine,
+•	outcome reasoning engine,
+•	deterministic review-support rules,
+•	KB-aligned policy logic,
+•	confidence scoring.
+Stage 6 — Review Assist Package Generation
+•	likely trigger,
+•	likely outcome,
+•	key evidence moments,
+•	telemetry-aligned summary,
+•	reviewer-ready structured comments,
+•	searchable event record.
+Stage 7 — Human Validation and Submission
+•	reviewer reviews AI suggestions,
+•	reviewer edits if needed,
+•	reviewer submits final decision.
+Leadership message
+The system supports the reviewer across the workflow, but final adjudication remains human-controlled.
+ 
+Slide 7 — Technical Module Breakdown
 Purpose:
 Provide an enterprise-grade technical view.
-
-### Module A — Event ingestion and media validation
-
+Module A — Event ingestion and media validation
 Purpose:
-
-* validate incoming event clips,
-* extract media metadata,
-* organize events into a structured inventory.
-
+•	validate incoming event clips,
+•	extract media metadata,
+•	organize events into a structured inventory.
 Outputs:
-
-* media manifest,
-* clip metadata,
-* quality validation flags.
-
-### Module B — Telemetry-video synchronization
-
+•	media manifest,
+•	clip metadata,
+•	quality validation flags.
+Module B — Telemetry-video synchronization
 Purpose:
-
-* align speed, brake, acceleration, GPS, and related telemetry with the video timeline.
-
+•	align speed, brake, acceleration, GPS, and related telemetry with the video timeline.
 Why important:
-
-* braking trigger understanding,
-* speed interpretation,
-* following distance behavior,
-* lane departure context,
-* timing consistency for review.
-
+•	braking trigger understanding,
+•	speed interpretation,
+•	following distance behavior,
+•	lane departure context,
+•	timing consistency for review.
 Outputs:
-
-* aligned telemetry timeline,
-* sync offset and drift,
-* sync quality score.
-
-### Module C — Audio-event processing
-
+•	aligned telemetry timeline,
+•	sync offset and drift,
+•	sync quality score.
+Module C — Audio-event processing
 Purpose:
-
-* extract and align audio cues,
-* identify impact-like peaks,
-* detect horn / abrupt acoustic signals,
-* support key event moment localization.
-
+•	extract and align audio cues,
+•	identify impact-like peaks,
+•	detect horn / abrupt acoustic signals,
+•	support key event moment localization.
 Outputs:
-
-* aligned audio timeline,
-* key acoustic markers,
-* audio evidence cues.
-
-### Module D — Preprocessing and quality analysis
-
+•	aligned audio timeline,
+•	key acoustic markers,
+•	audio evidence cues.
+Module D — Preprocessing and quality analysis
 Purpose:
-
-* normalize frames,
-* tag poor visibility / poor-quality events,
-* detect blur, glare, darkness, and lens obstruction.
-
+•	normalize frames,
+•	tag poor visibility / poor-quality events,
+•	detect blur, glare, darkness, and lens obstruction.
 Outputs:
-
-* normalized review frames,
-* quality tags,
-* obstruction / visibility indicators.
-
-### Module E — Privacy-safe review preparation
-
+•	normalized review frames,
+•	quality tags,
+•	obstruction / visibility indicators.
+Module E — Privacy-safe review preparation
 Purpose:
-
-* create masked review clips where required,
-* control storage and review visibility of PII.
-
+•	create masked review clips where required,
+•	control storage and review visibility of PII.
 Outputs:
-
-* masked review video,
-* privacy status flag,
-* review-safe event package.
-
-### Module F — Video signal understanding
-
+•	masked review video,
+•	privacy status flag,
+•	review-safe event package.
+Module F — Video signal understanding
 Purpose:
 Extract event-related scene signals such as:
-
-* vehicle motion patterns,
-* braking context,
-* relative motion,
-* following / critical distance context,
-* lane departure cues,
-* pedestrian involvement,
-* parked/highway-ramp context.
-
+•	vehicle motion patterns,
+•	braking context,
+•	relative motion,
+•	following / critical distance context,
+•	lane departure cues,
+•	pedestrian involvement,
+•	parked/highway-ramp context.
 Outputs:
-
-* structured scene/event features,
-* visual evidence cues,
-* actor-level summaries where useful.
-
-### Module G — Trigger reasoning engine
-
+•	structured scene/event features,
+•	visual evidence cues,
+•	actor-level summaries where useful.
+Module G — Trigger reasoning engine
 Purpose:
 Predict or rank the likely event trigger using:
-
-* telemetry features,
-* audio features,
-* video-derived scene features,
-* and customer-defined trigger taxonomy.
-
+•	telemetry features,
+•	audio features,
+•	video-derived scene features,
+•	and customer-defined trigger taxonomy.
 Potential trigger groups:
-
-* braking,
-* speeding,
-* lane departure,
-* following / critical distance,
-* pedestrian,
-* fatigue / inattentive indicators where feasible,
-* red light,
-* rough/uneven surface,
-* lens obstruction.
-
+•	braking,
+•	speeding,
+•	lane departure,
+•	following / critical distance,
+•	pedestrian,
+•	fatigue / inattentive indicators where feasible,
+•	red light,
+•	rough/uneven surface,
+•	lens obstruction.
 Outputs:
-
-* top trigger prediction,
-* ranked trigger candidates,
-* trigger confidence.
-
-### Module H — Outcome reasoning engine
-
+•	top trigger prediction,
+•	ranked trigger candidates,
+•	trigger confidence.
+Module H — Outcome reasoning engine
 Purpose:
 Predict event outcome using video + audio + telemetry + context.
-
 Target classes:
-
-* no collision,
-* near collision - unavoidable,
-* near collision,
-* collision,
-* possible collision.
-
+•	no collision,
+•	near collision - unavoidable,
+•	near collision,
+•	collision,
+•	possible collision.
 Outputs:
-
-* outcome prediction,
-* confidence,
-* evidence summary,
-* escalation flag for critical review.
-
-### Module I — Structured explanation and reviewer assistance
-
+•	outcome prediction,
+•	confidence,
+•	evidence summary,
+•	escalation flag for critical review.
+Module I — Structured explanation and reviewer assistance
 Purpose:
 Provide reviewer-facing summaries such as:
-
-* likely trigger,
-* likely outcome,
-* reason summary,
-* supporting telemetry pattern,
-* key frames,
-* key audio markers,
-* suggested reviewer comment skeleton.
-
+•	likely trigger,
+•	likely outcome,
+•	reason summary,
+•	supporting telemetry pattern,
+•	key frames,
+•	key audio markers,
+•	suggested reviewer comment skeleton.
 This should remain structured and auditable in Phase 1.
-
-### Module J — Review package and event store
-
+Module J — Review package and event store
 Purpose:
 Generate:
-
-* searchable event records,
-* event evidence clips,
-* structured summaries,
-* review-ready forms,
-* review feedback states.
-
----
-
-## Slide 8 — Technology Stack by Layer
-
+•	searchable event records,
+•	event evidence clips,
+•	structured summaries,
+•	review-ready forms,
+•	review feedback states.
+ 
+Slide 8 — Technology Stack by Layer
 Purpose:
 Show enterprise-grade implementation credibility.
-
-### Ingestion / media layer
-
-* FFmpeg / FFprobe
-* OpenCV
-* Python data services
-
-### Synchronization layer
-
-* custom telemetry-video sync logic
-* timestamp alignment and drift correction
-* audio-video alignment utilities
-
-### Video understanding layer
-
-* YOLO-family detector
-* ByteTrack
-* motion estimation / ego-motion proxy
-* lane / drivable understanding
-* optional depth estimation
-
-### Audio layer
-
-* audio extraction pipeline
-* acoustic event cue extraction
-* event-peak and key-moment detection
-
-### Review reasoning layer
-
-* deterministic rule baseline
-* trigger classifier / ranking model
-* outcome classifier
-* KB policy logic
-* structured fusion layer
-
-### Review and MLOps layer
-
-* searchable event store
-* CVAT / FiftyOne for review and analysis
-* MLflow / DVC for lineage
-* Prefect / Airflow / Ray for orchestration and scale
-
-### Leadership note
-
+Ingestion / media layer
+•	FFmpeg / FFprobe
+•	OpenCV
+•	Python data services
+Synchronization layer
+•	custom telemetry-video sync logic
+•	timestamp alignment and drift correction
+•	audio-video alignment utilities
+Video understanding layer
+•	YOLO-family detector
+•	ByteTrack
+•	motion estimation / ego-motion proxy
+•	lane / drivable understanding
+•	optional depth estimation
+Audio layer
+•	audio extraction pipeline
+•	acoustic event cue extraction
+•	event-peak and key-moment detection
+Review reasoning layer
+•	deterministic rule baseline
+•	trigger classifier / ranking model
+•	outcome classifier
+•	KB policy logic
+•	structured fusion layer
+Review and MLOps layer
+•	searchable event store
+•	CVAT / FiftyOne for review and analysis
+•	MLflow / DVC for lineage
+•	Prefect / Airflow / Ray for orchestration and scale
+Leadership note
 The stack should remain modular so components can be upgraded later without redesigning the entire system.
-
----
-
-## Slide 9 — How AI Supports the Existing Review Workflow
-
+ 
+Slide 9 — How AI Supports the Existing Review Workflow
 Purpose:
 Map AI assistance to the customer’s real process.
-
-### Examples
-
-**Review playback**
-
-* surface key timestamps,
-* reduce rewatch burden,
-* align telemetry and audio evidence.
-
-**Root cause / trigger identification**
-
-* provide ranked trigger suggestions,
-* surface supporting scene + telemetry + audio evidence.
-
-**Outcome determination**
-
-* provide likely outcome suggestion,
-* highlight collision / near-collision indicators,
-* escalate likely critical cases.
-
-**Braking analysis**
-
-* correlate braking telemetry with likely visual and acoustic cause.
-
-**Comments and submission**
-
-* pre-fill structured summary,
-* leave final confirmation with the reviewer.
-
-### Leadership message
-
-**The system accelerates and structures the workflow rather than bypassing it.**
-
----
-
-## Slide 10 — Risks and Assumptions
-
+Examples
+Review playback
+•	surface key timestamps,
+•	reduce rewatch burden,
+•	align telemetry and audio evidence.
+Root cause / trigger identification
+•	provide ranked trigger suggestions,
+•	surface supporting scene + telemetry + audio evidence.
+Outcome determination
+•	provide likely outcome suggestion,
+•	highlight collision / near-collision indicators,
+•	escalate likely critical cases.
+Braking analysis
+•	correlate braking telemetry with likely visual and acoustic cause.
+Comments and submission
+•	pre-fill structured summary,
+•	leave final confirmation with the reviewer.
+Leadership message
+The system accelerates and structures the workflow rather than bypassing it.
+ 
+Slide 10 — Risks and Assumptions
 Purpose:
 Show maturity and implementation realism.
-
-### Key risks
-
-* taxonomy ambiguity,
-* telemetry sync quality,
-* outcome imbalance,
-* weak labels from legacy review inconsistency,
-* over-promising fatigue/distraction inference,
-* privacy/compliance constraints,
-* variability in event quality,
-* inconsistent audio quality or missing audio channels.
-
-### Key assumptions
-
-* customer can provide reviewed event history,
-* telemetry is available for at least a meaningful subset,
-* audio is accessible and usable for event analysis,
-* review behavior definitions are shareable,
-* human reviewers remain part of the final decision process.
-
----
-
-## Slide 11 — Phased Delivery Approach
-
+Key risks
+•	taxonomy ambiguity,
+•	telemetry sync quality,
+•	outcome imbalance,
+•	weak labels from legacy review inconsistency,
+•	over-promising fatigue/distraction inference,
+•	privacy/compliance constraints,
+•	variability in event quality,
+•	inconsistent audio quality or missing audio channels.
+Key assumptions
+•	customer can provide reviewed event history,
+•	telemetry is available for at least a meaningful subset,
+•	audio is accessible and usable for event analysis,
+•	review behavior definitions are shareable,
+•	human reviewers remain part of the final decision process.
+ 
+Slide 11 — Phased Delivery Approach
 Purpose:
 Show a practical, low-risk delivery plan.
-
-### Phase 0 — Taxonomy, Benchmark, and Data Validation
-
-* freeze outcome / trigger scope,
-* validate telemetry and audio availability,
-* align customer review definitions.
-
-### Phase 0.5 — Deterministic Baseline
-
-* telemetry + rules baseline,
-* initial trigger heuristics,
-* review acceleration prototype.
-
-### Phase 1 — Review Intelligence Baseline
-
-* multimodal sync,
-* event feature extraction,
-* trigger / outcome suggestion,
-* review package generation.
-
-### Phase 2 — Learned Multimodal Reasoning
-
-* stronger trigger / outcome models,
-* audio-video-telemetry fusion,
-* confidence calibration.
-
-### Phase 3 — Review Platform and Feedback Loop
-
-* review workflow integration,
-* searchable event intelligence,
-* MLOps and continuous improvement.
-
----
-
-## Slide 12 — Final Ask / Recommendation
-
+Phase 0 — Taxonomy, Benchmark, and Data Validation
+•	freeze outcome / trigger scope,
+•	validate telemetry and audio availability,
+•	align customer review definitions.
+Phase 0.5 — Deterministic Baseline
+•	telemetry + rules baseline,
+•	initial trigger heuristics,
+•	review acceleration prototype.
+Phase 1 — Review Intelligence Baseline
+•	multimodal sync,
+•	event feature extraction,
+•	trigger / outcome suggestion,
+•	review package generation.
+Phase 2 — Learned Multimodal Reasoning
+•	stronger trigger / outcome models,
+•	audio-video-telemetry fusion,
+•	confidence calibration.
+Phase 3 — Review Platform and Feedback Loop
+•	review workflow integration,
+•	searchable event intelligence,
+•	MLOps and continuous improvement.
+ 
+Slide 12 — Final Ask / Recommendation
 Purpose:
 Close with leadership alignment.
-
-### Recommendation
-
-Proceed with a **Phase-1 AI-assisted collision / near-collision review intelligence system** that:
-
-* aligns to the customer’s current review process,
-* uses video + audio + telemetry + review KB,
-* remains human-in-the-loop,
-* and creates a scalable foundation for future review intelligence.
-
-### What leadership alignment is needed now
-
-* agreement on Phase-1 scope,
-* access to reviewed event history,
-* access to telemetry and audio samples,
-* access to review definitions / KB,
-* approval to proceed with benchmark and baseline design.
-
----
-
-# 4. Notes for Final Deck Design
-
-## Tone
-
-* enterprise-grade
-* technically credible
-* not hype-driven
-* human-in-the-loop
-* phase-1 scoped
-
-## Language to prefer
-
-* AI-assisted
-* reviewer decision support
-* review assist package
-* structured evidence
-* calibrated suggestions
-* human validation
-
-## Language to avoid
-
-* full automation
-* replace reviewer
-* autonomous adjudication
-* complete DMS intelligence in Phase 1
-
----
-
-# 5. Final Presentation Positioning
-
+Recommendation
+Proceed with a Phase-1 AI-assisted collision / near-collision review intelligence system that:
+•	aligns to the customer’s current review process,
+•	uses video + audio + telemetry + review KB,
+•	remains human-in-the-loop,
+•	and creates a scalable foundation for future review intelligence.
+What leadership alignment is needed now
+•	agreement on Phase-1 scope,
+•	access to reviewed event history,
+•	access to telemetry and audio samples,
+•	access to review definitions / KB,
+•	approval to proceed with benchmark and baseline design.
+ 
+4. Notes for Final Deck Design
+Tone
+•	enterprise-grade
+•	technically credible
+•	not hype-driven
+•	human-in-the-loop
+•	phase-1 scoped
+Language to prefer
+•	AI-assisted
+•	reviewer decision support
+•	review assist package
+•	structured evidence
+•	calibrated suggestions
+•	human validation
+Language to avoid
+•	full automation
+•	replace reviewer
+•	autonomous adjudication
+•	complete DMS intelligence in Phase 1
+ 
+5. Final Presentation Positioning
 The final presentation should clearly communicate:
+We are building an offline multimodal collision / near-collision review intelligence system that augments the customer’s current manual event review process with AI-assisted trigger reasoning, outcome reasoning, synchronized evidence extraction, and reviewer-ready structured outputs — while keeping human reviewers in control of the final decision.
 
-**We are building an offline multimodal collision / near-collision review intelligence system that augments the customer’s current manual event review process with AI-assisted trigger reasoning, outcome reasoning, synchronized evidence extraction, and reviewer-ready structured outputs — while keeping human reviewers in control of the final decision.**
