@@ -1,0 +1,261 @@
+Layer C POC Approach Document
+Planner-First Phase-wise Development Plan, Technical Approach, HLD/LLD, and Timeline with Buffers
+Scope: Planner + Supervisor + Orchestrator Handshake for the Enterprise Agentic Layer POC
+Primary objective	Prove that Layer C can transform an enterprise intent into a valid execution plan, monitor execution against that plan, and trigger continue / re-plan / escalate / stop decisions.
+POC boundary	Planner, Supervisor, minimal Orchestrator integration, mock agents/tools, traces, recovery loop, and evaluation harness.
+Recommended stack	Python, FastAPI, Pydantic v2, structured LLM outputs, NetworkX, LangGraph, pytest, OpenTelemetry, Docker, Azure Container Apps.
+Approximate duration	10 weeks total including built-in delivery buffers. Compressible to 8 weeks with parallel engineering capacity, but 10 weeks is the realistic default.
+
+1. Purpose and Context
+This document translates the Layer C architecture into a buildable Proof of Concept plan. It is aligned to the Planner-first execution model, where the Planner defines the execution universe through a structured task DAG and the Supervisor later monitors that execution for validity, risk, conflicts, and recovery triggers.
+The intent is not to build the whole Enterprise Agentic Layer in one go. The intent is to build a disciplined POC that proves the core runtime loop: intent → plan → execute → supervise → recover or complete.
+2. Design Principles Applied to the POC
+•	Planner first, Supervisor second, integration third.
+•	Contract-first development using typed schemas and JSON validation.
+•	Keep the POC narrow: avoid full enterprise governance, RL, vector databases, and durable workflow complexity in the first iteration.
+•	Keep Planner output as data, not executable code.
+•	Keep Orchestrator responsible for execution and Supervisor responsible for intervention decisions.
+•	Use realistic buffers in timeline estimates to absorb prompt tuning, schema fixes, and integration instability.
+3. Assumptions and Teaming Model
+Timeline assumptions are based on a small POC team: one lead/architect working hands-on, one engineer implementing core services, and light support from platform or cloud engineering when needed.
+•	Assumed cadence: 5 working days per week.
+•	Assumed team: 1 technical lead + 1 engineer, with partial support for deployment/telemetry.
+•	Assumed runtime: API-driven local development first, then containerized deployment.
+•	Assumed model path for Planner MVP: managed LLM endpoint with schema-constrained structured output.
+•	Assumed storage for POC: in-memory state and JSON artifacts; no mandatory persistent data platform in v1.
+4. POC Scope and Non-Scope
+In scope
+•	Layer C boundaries and contracts
+•	Planner MVP (deterministic + LLM-assisted planning)
+•	Supervisor MVP (state read, decision engine, escalation trigger)
+•	Minimal Orchestrator handshake
+•	Mock tools/agents for execution simulation
+•	Re-planning loop from partial state
+•	Trace instrumentation and evaluation harness
+Out of scope for this POC
+•	Full RL optimization and adaptive learning
+•	Production-grade policy engine and enterprise auth integration
+•	Full semantic / vector / graph memory stack
+•	Temporal-grade durable business workflow orchestration
+•	Advanced edge, multimodal, or privacy-first local RAG features
+•	Production SLOs and enterprise-scale multi-tenancy
+5. Target Technical Architecture for the POC
+The POC keeps the wider Agentic Layer architecture intact but implements only the minimal slice needed to prove Layer C behavior.
+Component	Responsibility in POC	Implemented Now?	Notes
+Planner	Convert intent to ExecutionPlan DAG, validate, and support re-plan	Yes	Primary build focus in early phases
+Supervisor	Read execution state and emit continue / re-plan / escalate / stop decisions	Yes	Built after Planner output becomes stable
+Orchestrator	Execute the plan, dispatch nodes, update state, call Supervisor checkpoints	Minimal	Only the minimal handshake and state machine needed for POC
+Policy/Governance	Hard policy and approvals	Stub/Minimal	Represented through config and thresholds, not enterprise integration
+Memory	Long-term semantic / episodic memory	Minimal	Only current state + optional JSON artifact storage
+Observability	Tracing and run telemetry	Yes	Focused on plan, transition, and decision traces
+
+6. Recommended Technology Stack
+Area	Recommended Choice	Why It Fits	Alternatives / Upgrade Path
+API / service layer	FastAPI	Typed APIs, quick POC services, OpenAPI-friendly contracts	Flask for simpler services; Temporal later for workflow-heavy backends
+Contracts / validation	Pydantic v2	Strict typed models and JSON Schema generation for ExecutionPlan and related contracts	dataclasses + marshmallow, but Pydantic is stronger for this use case
+Planner model output	Structured LLM outputs from managed API	Reduces brittle JSON repair work and fits contract-first planning	Local open-weight backend later through provider adapter
+DAG validation	NetworkX	Fast acyclic graph validation and topological checks	Custom validator for very small graphs if needed
+Orchestration runtime	LangGraph	Handles cyclic plan → execute → supervise → re-plan loop naturally	Custom Python state machine for maximum control
+Testing	pytest	Fast unit/integration coverage for schemas, planner, supervisor, and loop behavior	unittest if required by org standards
+Tracing	OpenTelemetry	Vendor-neutral telemetry and good path to future observability stacks	MLflow Tracing or Phoenix on top of OTel if needed
+Packaging / deploy	Docker + Azure Container Apps	Simple containerized POC path with smooth move from local to cloud	Kubernetes later if the platform grows
+
+Recommendation: keep all model calls isolated under adapters/ so provider changes do not affect planner or supervisor core logic.
+Phase 0 — Foundation, Boundaries, and Contracts
+Duration: 1.5 weeks total (1.0 week build + 0.5 week buffer)
+Objective: Freeze Layer C scope and create the canonical contracts that all later phases depend on.
+HLD focus
+•	Define Layer C boundaries: Planner vs Supervisor vs Orchestrator.
+•	Define happy-path and failure-path sequence flows.
+•	Define POC success criteria and explicit non-goals.
+•	Define repository/module boundaries and deployment assumptions.
+LLD focus
+•	Create Pydantic models for RequestEnvelope, ExecutionPlan, TaskNode, StateCheckpoint, SupervisorDecision, and ReplanRequest.
+•	Define error contract(s), plan versioning fields, and state transition enums.
+•	Define API signatures for planner.generate_plan(), planner.replan(), supervisor.evaluate_state().
+•	Export JSON schemas for all core contracts.
+Build tasks
+•	Initialize repository structure.
+•	Build core contract package and schema tests.
+•	Create FastAPI service stubs for Planner and Supervisor.
+•	Set up config management (.env + YAML/JSON configs).
+•	Create initial sequence diagrams and HLD note.
+Recommended tools/packages
+Python, FastAPI, Pydantic v2, pytest, python-dotenv, PyYAML
+Exit outputs
+Approved contract package, schema JSON files, Phase 0 HLD/LLD note, API skeleton
+Phase 1 — Planner MVP
+Duration: 2.5 weeks total (2.0 weeks build + 0.5 week buffer)
+Objective: Create a Planner that can generate and validate a structured execution plan.
+HLD focus
+•	Define planner modes: deterministic template planner and LLM-assisted planner.
+•	Define DAG structure, plan versioning, and node semantics.
+•	Define planner failure and retry behavior.
+•	Define how replanning differs from first-pass planning.
+LLD focus
+•	Design prompt template(s) for DAG generation and replanning.
+•	Implement schema-constrained planner output flow.
+•	Implement DAG validation using NetworkX (acyclic, dependencies, uniqueness).
+•	Implement retry + repair loop when output is invalid.
+Build tasks
+•	Build deterministic planner for fixed test cases.
+•	Build LLM planner with structured output.
+•	Build validator and output normalizer.
+•	Implement replan() endpoint/method using partial state + failure reason.
+•	Add planner telemetry for plan version, node count, and validation failures.
+Recommended tools/packages
+OpenAI/Azure structured outputs via adapter, Pydantic, NetworkX, tenacity, pytest
+Exit outputs
+Planner module/service, prompt files, validated ExecutionPlan output, replanning entry point
+Phase 2 — Supervisor MVP
+Duration: 2.0 weeks total (1.5 weeks build + 0.5 week buffer)
+Objective: Create a Supervisor that observes execution state and decides whether the runtime should continue, re-plan, escalate, reflect, or stop.
+HLD focus
+•	Define Supervisor role in the runtime loop.
+•	Define decision thresholds and escalation conditions.
+•	Define interaction contract with Orchestrator and Planner.
+•	Define minimal reflection trigger logic for the POC.
+LLD focus
+•	Create decision enum and payload schema.
+•	Implement confidence/error/failure thresholds from config.
+•	Implement state reader and evaluation logic.
+•	Implement structured ReplanRequest emission.
+Build tasks
+•	Build execution state reader.
+•	Build deterministic decision engine.
+•	Build conflict/failure detector.
+•	Build escalation/stoppage decision path.
+•	Add supervisor telemetry for decision type, trigger reason, and confidence signals.
+Recommended tools/packages
+Pydantic, FastAPI, pytest, structlog/loguru, YAML/JSON configs
+Exit outputs
+Supervisor module/service, decision policy config, tests for continue/replan/escalate/stop
+Phase 3 — Planner/Supervisor/Orchestrator Integration
+Duration: 2.0 weeks total (1.5 weeks build + 0.5 week buffer)
+Objective: Close the end-to-end loop by wiring plan execution, state updates, and supervisor intervention into one runnable flow.
+HLD focus
+•	Define end-to-end execution loop and checkpoint locations.
+•	Define state machine for task lifecycle transitions.
+•	Define when Supervisor is invoked during execution.
+•	Define how replanning replaces an active plan.
+LLD focus
+•	Implement DAG traversal and node readiness logic.
+•	Implement dispatcher for mock tools/agents.
+•	Implement state update and context passing rules.
+•	Implement supervisor checkpoint hooks and replanning handoff.
+Build tasks
+•	Build orchestrator adapter/runtime loop.
+•	Wire Planner output to execution.
+•	Wire Supervisor into task transition checkpoints.
+•	Implement mock agent/tool dispatch and context passing.
+•	Add full run trace instrumentation.
+Recommended tools/packages
+LangGraph, NetworkX, OpenTelemetry, pytest integration tests, mock adapters
+Exit outputs
+Runnable end-to-end loop, traceable runs, partial-state replanning flow
+Phase 4 — Recovery, Reflection, and Hardening
+Duration: 1.5 weeks total (1.0 week build + 0.5 week buffer)
+Objective: Make the POC resilient enough to demonstrate real agentic behavior under failure.
+HLD focus
+•	Define recovery taxonomy: retry vs re-plan vs stop vs escalate.
+•	Define timeout and fault injection strategy.
+•	Define minimal reflection summary model.
+•	Define graceful degradation behavior.
+LLD focus
+•	Implement failure injection hooks and timeout simulation.
+•	Implement retry rules and backoff.
+•	Implement failure summary generation for replanning.
+•	Implement operator-readable escalation payload.
+Build tasks
+•	Add deliberate task failure injection.
+•	Add timeout simulation.
+•	Build retry + replan routing.
+•	Add reflection summary payload.
+•	Add graceful stop and escalation artifacts.
+Recommended tools/packages
+tenacity, pytest, OpenTelemetry, structured logging
+Exit outputs
+Recovery flows, failure traces, reflection payloads, hardening scenarios
+Phase 5 — Evaluation, Readout, and Go/No-Go
+Duration: 1.0 week total (0.75 week build + 0.25 week buffer)
+Objective: Measure whether the POC is credible enough to justify the next engineering phase.
+HLD focus
+•	Define evaluation dimensions for Planner and Supervisor.
+•	Define POC readout structure and next-phase recommendations.
+•	Define what constitutes a successful POC outcome.
+LLD focus
+•	Implement scoring rubric for DAG quality.
+•	Implement scoring rubric for supervisor decision quality.
+•	Create golden-set evaluation input pack.
+•	Create result summary tables and readout materials.
+Build tasks
+•	Create 10–20 golden test intents.
+•	Score decomposition quality and DAG validity.
+•	Score false escalation and missed escalation rates.
+•	Prepare demo narrative and final readout.
+•	Document limitations, risks, and Phase 2 recommendations.
+Recommended tools/packages
+pytest, pandas/notebooks (optional), MLflow Tracking/Tracing optional, markdown/report tooling
+Exit outputs
+Evaluation report, demo pack, backlog recommendations for next phase
+7. Timeline Summary with Built-in Buffers
+Phase	Core Build	Buffer	Total Duration	Suggested Calendar Window
+Phase 0	1.0 week	0.5 week	1.5 weeks	Week 1–2
+Phase 1	2.0 weeks	0.5 week	2.5 weeks	Week 2–4
+Phase 2	1.5 weeks	0.5 week	2.0 weeks	Week 5–6
+Phase 3	1.5 weeks	0.5 week	2.0 weeks	Week 7–8
+Phase 4	1.0 week	0.5 week	1.5 weeks	Week 8–9.5
+Phase 5	0.75 week	0.25 week	1.0 week	Week 10
+
+Total realistic POC timeline: approximately 10 weeks. This already includes delivery buffers to account for schema tuning, prompt repair work, integration drift, trace tuning, and demo preparation.
+If the team has one additional strong engineer and stable platform support, the same scope can likely be compressed to around 8 weeks. Without that extra capacity, the 10-week estimate is the safer and more realistic commitment.
+8. HLD vs LLD Ownership Guidance
+HLD should answer
+•	What component exists and why
+•	Where it sits in the architecture
+•	Which other components it talks to
+•	Which policies and constraints affect it
+•	What the phase success criteria are
+•	What is intentionally deferred
+LLD should answer
+•	Exact schemas, APIs, and enums
+•	Exact prompt templates and validation rules
+•	Exact state transitions and failure paths
+•	Exact config knobs and threshold locations
+•	Exact telemetry events and test cases
+•	Exact artifacts produced at phase exit
+9. Recommended Repository and Module Structure
+Repository structure should preserve separation of cognition and control. Keep APIs, core logic, and provider/tool adapters clearly separated so provider swaps do not affect core Planner or Supervisor logic.
+•	api/ — FastAPI routes and request/response handling
+•	core/contracts/ — Pydantic schemas and enums
+•	core/planner/ — Planner logic, prompts, validation, and replan flow
+•	core/supervisor/ — Supervisor logic, state evaluation, decision emission
+•	core/orchestrator/ — Minimal runtime loop and task state machine
+•	adapters/llm/ — Managed model adapters and structured output helpers
+•	adapters/tools/ — Mock or real tool execution adapters
+•	telemetry/ — trace emission helpers
+•	tests/unit/ and tests/integration/ — schema, planner, supervisor, and loop tests
+10. Risks, Buffers, and Why the Timeline Is Not Over-Optimistic
+Risk	Why It Matters	Buffer Response
+Structured output drift	Planner JSON can still fail schema or semantic validation even with constrained output	Phase 1 includes retry/repair time and a half-week buffer
+Boundary confusion	Supervisor can accidentally absorb Orchestrator duties during coding	Phase 0 explicitly freezes boundaries and schemas
+Prompt tuning churn	Planner outputs often need prompt refinement for dependency accuracy	Phase 1 buffer and golden test intents absorb this
+Integration instability	The cyclic loop introduces edge cases once re-plan is enabled	Phase 3 and 4 buffers absorb runtime debugging
+Demo hardening under failure	A POC without recovery looks scripted rather than agentic	Phase 4 is reserved specifically for failure and recovery behavior
+
+11. Deliverables by the End of the POC
+•	Contract package with JSON schema exports
+•	Planner MVP with deterministic and LLM-assisted planning
+•	Supervisor MVP with deterministic decision policies
+•	Minimal Orchestrator handshake for plan execution and checkpointing
+•	Failure, timeout, and replanning loop demonstrations
+•	Traceable runs with key decision telemetry
+•	Evaluation report covering DAG quality and supervisor decision quality
+•	Readout pack for leadership / next-phase approval
+12. Immediate Next Steps
+•	Finalize Phase 0 HLD note and schema list.
+•	Initialize repository skeleton.
+•	Implement the Pydantic contracts and schema tests.
+•	Create Planner and Supervisor FastAPI stubs.
+•	Set up prompt/config directories and a simple local test harness.
+•	Then begin Planner MVP implementation.
