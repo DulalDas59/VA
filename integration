@@ -1,0 +1,2128 @@
+Yes, DD — exactly.
+
+Your **Control Layer**:
+
+**Planner + Orchestrator + Supervisor**
+
+cannot work in isolation. It must continuously interact with:
+
+1. **Memory Management Layer**
+2. **Governance / Policy Layer**
+3. Observability layer, though you already covered that partly in the current backlog.
+
+Your existing Release 1 backlog already has hooks for this: **R1-06** for aligning governance, memory, and observability assumptions; **R1-16** for planner memory hooks; **R1-28** for orchestrator memory integration; **R1-32 / R1-38** for policy and risk evaluation; and **R1-39** for the memory retrieval/write-back contract. 
+
+So what you need now is a **parallel Release 1 plan** for Memory and Governance so that these layers are ready when Planner, Orchestrator, and Supervisor need them.
+
+---
+
+# 1. How the layers should talk
+
+## Control Layer ↔ Memory Management
+
+The control layer needs memory for:
+
+| Control Component | Memory Need                                                                        |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| Planner           | Retrieve user/project context, SOPs, past workflows, templates, semantic knowledge |
+| Planner           | Store generated plans and plan versions                                            |
+| Orchestrator      | Read execution context and task history                                            |
+| Orchestrator      | Write task state, checkpoints, retries, tool outputs                               |
+| Supervisor        | Read checkpoints, failure history, risk context, previous escalation decisions     |
+| Supervisor        | Write supervisory decisions, escalation records, replan reasons                    |
+
+For Release 1, memory should be **contract-first**, not overly intelligent. Do not build a full self-learning memory system yet.
+
+---
+
+## Control Layer ↔ Governance
+
+The control layer needs governance for:
+
+| Control Component | Governance Need                            |
+| ----------------- | ------------------------------------------ |
+| Intake            | Tenant, role, permissions, risk profile    |
+| Planner           | Whether a plan is allowed before execution |
+| Planner           | Which tools/agents/actions are allowed     |
+| Orchestrator      | Runtime tool authorization                 |
+| Orchestrator      | Retry, timeout, approval, and pause rules  |
+| Supervisor        | Decide continue / replan / escalate / stop |
+| Supervisor        | Generate audit-ready governance decisions  |
+
+For Release 1, governance should be **deterministic and reviewable**, not RL-based.
+
+---
+
+# 2. Release 1 Memory Management Plan
+
+## Memory Release 1 Objective
+
+Build the minimum production-grade memory layer required to support:
+
+**Plan context → execution state → checkpoint history → replan support → audit-safe memory records**
+
+This is not yet “adaptive memory” or “self-improving memory.” That can come in Release 2 or 3.
+
+---
+
+## Memory R1 Scope
+
+| Included in R1              | Not in R1                            |
+| --------------------------- | ------------------------------------ |
+| Memory APIs/contracts       | Full self-learning memory            |
+| Working memory              | Advanced personalization             |
+| Episodic run memory         | Autonomous long-term learning        |
+| Semantic retrieval adapter  | Complex memory consolidation         |
+| Checkpoint/write-back store | Reinforcement-based memory selection |
+| Retention and access rules  | Multi-agent memory negotiation       |
+| Memory test harness         | Production-scale vector optimization |
+
+---
+
+## Memory Management Backlog — 14 Weeks
+
+| ID        | Bucket                   | Task / Story                                                                                   | Owner                            |   Start |     End | Dependency                  | Output                          |
+| --------- | ------------------------ | ---------------------------------------------------------------------------------------------- | -------------------------------- | ------: | ------: | --------------------------- | ------------------------------- |
+| MEM-R1-01 | Foundation               | Define Release 1 memory scope: working, episodic, semantic, checkpoint memory                  | You + Memory Lead                |  Week 1 |  Week 1 | None                        | Memory scope document           |
+| MEM-R1-02 | Foundation               | Define memory object model: MemoryRecord, MemoryQuery, MemoryWriteRequest, MemoryAccessContext | Memory Team + You                |  Week 1 |  Week 2 | MEM-R1-01                   | Versioned schema draft          |
+| MEM-R1-03 | Foundation               | Define memory namespaces: tenant, user, workflow, plan, run, task, policy-context              | Memory Team                      |  Week 1 |  Week 2 | MEM-R1-02                   | Namespace model                 |
+| MEM-R1-04 | Foundation               | Define memory lifecycle: create, read, update, expire, archive                                 | Memory Team                      |  Week 2 |  Week 2 | MEM-R1-02                   | Lifecycle rules                 |
+| MEM-R1-05 | Foundation               | Align memory contracts with Planner, Orchestrator, Supervisor contracts                        | You + Engineer 2 + Memory Team   |  Week 2 |  Week 3 | R1-02, R1-06, MEM-R1-02     | Contract alignment pack         |
+| MEM-R1-06 | API                      | Build memory read API baseline                                                                 | Memory Team                      |  Week 3 |  Week 4 | MEM-R1-05                   | `/memory/query` endpoint        |
+| MEM-R1-07 | API                      | Build memory write API baseline                                                                | Memory Team                      |  Week 3 |  Week 4 | MEM-R1-05                   | `/memory/write` endpoint        |
+| MEM-R1-08 | API                      | Build checkpoint write API for Orchestrator and Supervisor                                     | Memory Team + Engineer 1         |  Week 4 |  Week 5 | MEM-R1-07, R1-24            | Checkpoint memory API           |
+| MEM-R1-09 | Working Memory           | Implement short-lived workflow/session memory                                                  | Memory Team                      |  Week 4 |  Week 5 | MEM-R1-06                   | Working memory store            |
+| MEM-R1-10 | Episodic Memory          | Implement run history memory for completed tasks, failures, retries, decisions                 | Memory Team                      |  Week 5 |  Week 6 | MEM-R1-07                   | Episodic run store              |
+| MEM-R1-11 | Semantic Memory          | Implement semantic retrieval adapter for SOPs, KB docs, templates, previous plans              | Memory Team                      |  Week 5 |  Week 7 | MEM-R1-06                   | Semantic retrieval interface    |
+| MEM-R1-12 | Planner Integration      | Support Planner context retrieval: similar workflows, SOPs, templates, constraints             | You + Engineer 3 + Memory Team   |  Week 7 |  Week 8 | R1-16, MEM-R1-11            | Planner memory integration      |
+| MEM-R1-13 | Orchestrator Integration | Support execution-context reads and task/checkpoint write-backs                                | Engineer 1 + Memory Team         |  Week 8 |  Week 9 | R1-28, MEM-R1-08, MEM-R1-10 | Orchestrator memory integration |
+| MEM-R1-14 | Supervisor Integration   | Support failure history, previous decisions, escalation memory lookup                          | Engineer 3 + Memory Team         |  Week 8 |  Week 9 | R1-31, R1-33, MEM-R1-10     | Supervisor memory integration   |
+| MEM-R1-15 | Security                 | Add access-control checks for memory reads/writes based on tenant/role/context                 | Memory Team + Governance Team    |  Week 7 |  Week 9 | GOV-R1-06, MEM-R1-06        | Access-controlled memory        |
+| MEM-R1-16 | Retention                | Define TTL, retention, deletion, and archive rules for memory records                          | Memory Team + Governance Team    |  Week 8 |  Week 9 | MEM-R1-04                   | Memory retention policy         |
+| MEM-R1-17 | Privacy                  | Add PII/sensitive-data tagging support in memory metadata                                      | Memory Team + Governance Team    |  Week 8 | Week 10 | MEM-R1-02, GOV-R1-10        | Memory sensitivity tagging      |
+| MEM-R1-18 | Observability            | Emit trace-safe memory events: memory read, write, denied, expired                             | Memory Team + Observability Team |  Week 9 | Week 10 | R1-40, MEM-R1-06            | Memory telemetry events         |
+| MEM-R1-19 | Testing                  | Build memory contract tests for Planner, Orchestrator, Supervisor flows                        | Engineer 2 + Memory Team         | Week 10 | Week 11 | MEM-R1-12 to MEM-R1-14      | Memory integration tests        |
+| MEM-R1-20 | Testing                  | Run failure/replan memory replay tests                                                         | Engineer 3 + Memory Team         | Week 11 | Week 12 | R1-43, MEM-R1-19            | Replan memory validation        |
+| MEM-R1-21 | Hardening                | Memory performance, schema hardening, error handling, fallback behavior                        | Memory Team                      | Week 12 | Week 13 | MEM-R1-19                   | Hardened memory layer           |
+| MEM-R1-22 | Release                  | Memory runbook, API contract docs, known limitations, handoff pack                             | Memory Team + You                | Week 14 | Week 14 | MEM-R1-21                   | Memory release pack             |
+
+---
+
+# 3. Release 1 Governance Plan
+
+## Governance Release 1 Objective
+
+Build a deterministic governance layer that can answer:
+
+1. **Is this request allowed?**
+2. **Is this plan allowed?**
+3. **Is this tool/agent/action allowed?**
+4. **Does this task need approval?**
+5. **Should the Supervisor continue, retry, replan, escalate, or stop?**
+6. **Can we explain the decision later?**
+
+---
+
+## Governance R1 Scope
+
+| Included in R1                    | Not in R1                               |
+| --------------------------------- | --------------------------------------- |
+| Role/risk/action policy contracts | Autonomous policy learning              |
+| Tool and agent allow/deny checks  | RL-based governance                     |
+| Risk scoring baseline             | Complex legal/compliance automation     |
+| Approval/escalation rules         | Fine-grained domain policy authoring UI |
+| Supervisor decision policy        | Dynamic policy optimization             |
+| Audit decision records            | Advanced policy simulation engine       |
+
+---
+
+## Governance Backlog — 14 Weeks
+
+| ID        | Bucket                | Task / Story                                                                                | Owner                                |   Start |     End | Dependency              | Output                      |
+| --------- | --------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------ | ------: | ------: | ----------------------- | --------------------------- |
+| GOV-R1-01 | Foundation            | Define Release 1 governance boundaries and non-goals                                        | You + Governance Lead                |  Week 1 |  Week 1 | None                    | Governance scope document   |
+| GOV-R1-02 | Foundation            | Define governance context model: tenant, role, request type, risk level, allowed actions    | Governance Team + You                |  Week 1 |  Week 2 | GOV-R1-01               | Governance context schema   |
+| GOV-R1-03 | Foundation            | Define policy decision object: allow, deny, approve-required, escalate, stop                | Governance Team                      |  Week 1 |  Week 2 | GOV-R1-02               | PolicyDecision schema       |
+| GOV-R1-04 | Foundation            | Define risk taxonomy for R1 workflows: low, medium, high, restricted                        | Governance Team + You                |  Week 2 |  Week 2 | GOV-R1-01               | Risk taxonomy               |
+| GOV-R1-05 | Foundation            | Align governance contract with RequestEnvelope, ExecutionPlan, TaskNode, SupervisorDecision | You + Engineer 2 + Governance Team   |  Week 2 |  Week 3 | R1-02, R1-06, GOV-R1-03 | Contract alignment pack     |
+| GOV-R1-06 | Policy Engine         | Build baseline policy evaluation API                                                        | Governance Team                      |  Week 3 |  Week 4 | GOV-R1-05               | `/policy/evaluate` endpoint |
+| GOV-R1-07 | Intake Governance     | Implement request-level policy check for intake layer                                       | Engineer 2 + Governance Team         |  Week 3 |  Week 4 | R1-04, GOV-R1-06        | Intake policy check         |
+| GOV-R1-08 | Planner Governance    | Implement plan-level validation: forbidden tools, missing approvals, risky task nodes       | You + Governance Team                |  Week 5 |  Week 6 | R1-10, GOV-R1-06        | Plan governance validation  |
+| GOV-R1-09 | Tool Governance       | Define tool/agent registry policy: allowed, blocked, approval-required                      | Governance Team + Engineer 1         |  Week 5 |  Week 6 | R1-22, GOV-R1-06        | Tool policy registry        |
+| GOV-R1-10 | Data Governance       | Define sensitive data handling rules for prompts, memory, tool output, logs                 | Governance Team + Memory Team        |  Week 6 |  Week 7 | MEM-R1-02, R1-40        | Data governance rules       |
+| GOV-R1-11 | Runtime Governance    | Implement runtime tool authorization before Orchestrator dispatch                           | Engineer 1 + Governance Team         |  Week 6 |  Week 7 | R1-22, GOV-R1-09        | Runtime authorization check |
+| GOV-R1-12 | Retry Governance      | Define bounded retry, timeout, approval-wait, and pause/resume policies                     | Governance Team + Engineer 1         |  Week 7 |  Week 8 | R1-25, R1-26            | Runtime control policy      |
+| GOV-R1-13 | Supervisor Governance | Implement Supervisor policy/risk evaluator baseline                                         | Engineer 3 + Governance Team         |  Week 7 |  Week 8 | R1-32, GOV-R1-06        | Supervisor policy evaluator |
+| GOV-R1-14 | Decision Governance   | Implement governance-backed continue / replan / escalate / stop decision mapping            | You + Engineer 3 + Governance Team   |  Week 8 |  Week 9 | R1-33, GOV-R1-13        | Decision mapping rules      |
+| GOV-R1-15 | Escalation            | Define escalation payload requirements: reason, risk, failed rule, recommended action       | Governance Team + Engineer 3         |  Week 8 |  Week 9 | R1-35, GOV-R1-14        | Escalation contract         |
+| GOV-R1-16 | Audit                 | Implement governance decision audit records                                                 | Governance Team + Observability Team |  Week 9 | Week 10 | GOV-R1-06, R1-40        | Audit event schema          |
+| GOV-R1-17 | Policy Config         | Create versioned policy configuration format                                                | Governance Team                      |  Week 9 | Week 10 | GOV-R1-04, GOV-R1-09    | Policy config baseline      |
+| GOV-R1-18 | Integration           | Integrate governance checks into full replan workflow                                       | You + Engineer 3 + Governance Team   | Week 10 | Week 11 | R1-43, GOV-R1-14        | Governed replan flow        |
+| GOV-R1-19 | Integration           | Integrate governance checks into full escalation workflow                                   | Engineer 3 + Governance Team         | Week 10 | Week 11 | R1-44, GOV-R1-15        | Governed escalation flow    |
+| GOV-R1-20 | Testing               | Build governance contract tests: allow, deny, approval-required, escalate, stop             | Engineer 2 + Governance Team         | Week 11 | Week 12 | GOV-R1-06 to GOV-R1-16  | Governance test suite       |
+| GOV-R1-21 | Testing               | Run adversarial/failure scenario tests: unsafe tool, missing approval, policy conflict      | Governance Team + Engineer 3         | Week 12 | Week 13 | GOV-R1-20, R1-47        | Governance resilience tests |
+| GOV-R1-22 | Hardening             | Policy conflict handling, fallback behavior, error messages, audit completeness             | Governance Team                      | Week 13 | Week 13 | GOV-R1-21               | Hardened governance layer   |
+| GOV-R1-23 | Release               | Governance runbook, policy config guide, audit guide, signoff checklist                     | Governance Team + You                | Week 14 | Week 14 | GOV-R1-22               | Governance release pack     |
+
+---
+
+# 4. Combined Weekly View
+
+This is how the three tracks should move together.
+
+| Week | Control Layer Focus                          | Memory Focus                               | Governance Focus                          |
+| ---: | -------------------------------------------- | ------------------------------------------ | ----------------------------------------- |
+|    1 | Architecture baseline, contracts             | Memory scope and object model              | Governance scope and policy model         |
+|    2 | Intake, schemas, trace baseline              | Namespaces, lifecycle, contract alignment  | Risk taxonomy, policy decision schema     |
+|    3 | Planner/orchestrator service shells          | Memory read/write API baseline             | Policy evaluation API baseline            |
+|    4 | Planner intent + orchestration bootstrap     | Working memory and checkpoint API          | Intake and planner policy checks          |
+|    5 | Planning engine, plan builder                | Episodic memory, semantic adapter          | Tool/agent registry policy                |
+|    6 | DAG validation, annotation, supervisor shell | Checkpoint and run memory                  | Runtime and data governance               |
+|    7 | Replan handler, memory hooks                 | Planner memory integration                 | Retry, timeout, supervisor governance     |
+|    8 | Retry/pause/resume, supervisor decisions     | Orchestrator/supervisor memory integration | Decision mapping and escalation policy    |
+|    9 | Replan integration, telemetry                | Memory privacy, retention, telemetry       | Audit records and versioned policy config |
+|   10 | Core triangle integration                    | Memory integration tests                   | Replan/escalation governance integration  |
+|   11 | End-to-end replan/escalation                 | Memory replay tests                        | Governance contract tests                 |
+|   12 | Component and resilience testing             | Memory hardening                           | Governance adversarial tests              |
+|   13 | Workflow validation, defect burn-down        | Memory performance and fallback hardening  | Policy conflict and audit hardening       |
+|   14 | Release readiness                            | Memory release pack                        | Governance release pack                   |
+
+---
+
+# 5. Minimum interfaces you should demand from Memory and Governance
+
+## Memory APIs needed by Release 1
+
+| API                         | Used By                           | Purpose                                          |
+| --------------------------- | --------------------------------- | ------------------------------------------------ |
+| `query_memory()`            | Planner, Supervisor               | Retrieve context, SOPs, past workflows, failures |
+| `write_memory()`            | Planner, Orchestrator, Supervisor | Store plans, states, decisions                   |
+| `write_checkpoint()`        | Orchestrator                      | Store task/run checkpoints                       |
+| `get_run_history()`         | Supervisor                        | Analyze failures, retries, low confidence        |
+| `get_plan_history()`        | Planner                           | Replan from previous plan versions               |
+| `search_semantic_context()` | Planner                           | Retrieve relevant KB/SOP/templates               |
+| `expire_memory()`           | Governance/Memory                 | Enforce retention policy                         |
+
+---
+
+## Governance APIs needed by Release 1
+
+| API                              | Used By      | Purpose                                |
+| -------------------------------- | ------------ | -------------------------------------- |
+| `evaluate_request_policy()`      | Intake       | Check if request is allowed            |
+| `evaluate_plan_policy()`         | Planner      | Validate plan before execution         |
+| `evaluate_task_policy()`         | Orchestrator | Check task/tool/agent permission       |
+| `evaluate_runtime_policy()`      | Orchestrator | Retry, timeout, pause, approval checks |
+| `evaluate_supervisor_decision()` | Supervisor   | Continue/replan/escalate/stop          |
+| `create_audit_decision()`        | All layers   | Store explainable governance decision  |
+| `get_escalation_policy()`        | Supervisor   | Decide human handoff path              |
+
+---
+
+# 6. Practical ownership model
+
+For your Release 1, I would structure responsibility like this:
+
+| Area                            | Primary Owner                     | Your Role                            |
+| ------------------------------- | --------------------------------- | ------------------------------------ |
+| Planner/Orchestrator/Supervisor | Your team                         | Direct delivery owner                |
+| Memory internals                | Memory team / platform team       | Interface owner and acceptance owner |
+| Governance internals            | Governance / risk / platform team | Interface owner and acceptance owner |
+| Memory-control integration      | Your team + Memory team           | Co-owner                             |
+| Governance-control integration  | Your team + Governance team       | Co-owner                             |
+| Contract tests                  | Your team                         | Must own                             |
+| Release signoff                 | You                               | Final accountability                 |
+
+Very important: **do not let Memory and Governance become vague dependencies**. Convert them into explicit deliverables with dates, API contracts, schemas, test cases, fallback behavior, and signoff criteria.
+
+---
+
+# 7. My recommended Release 1 framing
+
+For Release 1, define the shared layers like this:
+
+> **Memory Management R1** provides controlled contextual recall, execution state persistence, checkpoint history, and replan support through versioned APIs.
+
+> **Governance R1** provides deterministic policy, risk, authorization, escalation, and audit decisions across request intake, planning, execution, and supervision.
+
+This makes your overall architecture look complete:
+
+```text
+User Request
+   ↓
+Request Intake
+   ↓
+Planner  ←→  Memory Management
+   ↓          ↑
+Orchestrator ←→ Governance / Policy
+   ↓          ↑
+Supervisor ←→ Memory + Governance
+   ↓
+Continue / Retry / Replan / Escalate / Stop
+```
+
+So yes — your instinct is correct. The Planner, Orchestrator, and Supervisor backlog is only the **control brain**. To make it enterprise-grade, you need these two parallel backlogs for **Memory** and **Governance** running from Week 1, not added later.
+
+************************************
+
+Yes, DD. From the **control plane**, you should not let every module directly call Memory and Governance randomly. Create two explicit adapters inside the control plane:
+
+```text
+Control Plane
+ ├── Planner
+ ├── Orchestrator
+ ├── Supervisor
+ ├── MemoryClient / MemoryGateway
+ └── GovernanceClient / PolicyGateway
+```
+
+Your backlog already expects this because R1 defines shared contracts such as `RequestEnvelope`, `ExecutionPlan`, `TaskNode`, `StateCheckpoint`, `SupervisorDecision`, and `ReplanRequest`; it also explicitly includes Planner memory hooks, Orchestrator memory integration, Supervisor policy/risk evaluation, and shared Memory/Governance overlap tasks. 
+
+---
+
+# 1. Core principle
+
+## Memory is used for context and state
+
+Memory answers:
+
+```text
+What do we already know?
+What happened earlier?
+What was the previous plan?
+What checkpoints exist?
+What failures happened?
+What context should be used for re-planning?
+```
+
+## Governance is used for permission and control
+
+Governance answers:
+
+```text
+Is this request allowed?
+Is this plan allowed?
+Is this tool allowed?
+Does this task need approval?
+Should execution continue, pause, re-plan, escalate, or stop?
+Can this decision be audited?
+```
+
+So the control-plane rule should be:
+
+```text
+Planner asks Memory before planning.
+Planner asks Governance before finalizing plan.
+
+Orchestrator asks Governance before executing actions.
+Orchestrator writes Memory during execution.
+
+Supervisor reads Memory to understand state/history.
+Supervisor asks Governance to decide continue/retry/replan/escalate/stop.
+```
+
+---
+
+# 2. Control-plane adapters to build
+
+These are the two internal modules I would add to your Release 1 design.
+
+| Adapter / Module         | Belongs To                                   | Talks To                            | Purpose                                                                            | Communication Style                   |
+| ------------------------ | -------------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------- |
+| `MemoryClient`           | Control Plane shared module                  | Memory Management Layer             | Read/write context, plans, checkpoints, execution history, failures                | Sync for reads, async/sync for writes |
+| `GovernanceClient`       | Control Plane shared module                  | Governance / Policy Layer           | Evaluate request, plan, task, tool, runtime, supervisor decisions                  | Mostly synchronous blocking calls     |
+| `MemoryContextAssembler` | Planner / Supervisor support module          | `MemoryClient`                      | Convert raw memory records into safe, compact context for LLM/planning/supervision | Internal function call                |
+| `PolicyContextBuilder`   | Intake / Planner / Orchestrator / Supervisor | `GovernanceClient`                  | Build tenant, role, risk, data-sensitivity, tool-permission context                | Internal function call                |
+| `AuditDecisionEmitter`   | Shared module                                | Governance + Observability          | Store policy decisions and trace-safe summaries                                    | Async event or sync write             |
+| `CheckpointPublisher`    | Orchestrator                                 | Memory + Observability + Supervisor | Emit runtime `StateCheckpoint` after task transitions                              | Event + API write                     |
+
+---
+
+# 3. Technical flow
+
+## 3.1 Request Intake → Governance
+
+At the beginning, the request intake layer should call Governance before the Planner receives the request.
+
+```text
+User Request
+   ↓
+Request Intake
+   ↓
+Governance: evaluate_request_policy()
+   ↓
+Allowed? → Planner
+Denied? → Stop / explain / escalate
+```
+
+### API
+
+```http
+POST /governance/evaluate-request
+```
+
+### Request payload
+
+```json
+{
+  "correlation_id": "corr-123",
+  "tenant_id": "tenant-a",
+  "user_id": "user-01",
+  "role": "business_user",
+  "request_type": "enterprise_workflow_execution",
+  "request_summary": "Generate invoice reconciliation workflow",
+  "data_classification": "internal",
+  "requested_capabilities": ["planning", "tool_execution", "memory_lookup"]
+}
+```
+
+### Response
+
+```json
+{
+  "decision": "allow",
+  "risk_level": "medium",
+  "required_controls": ["audit_logging", "tool_authorization"],
+  "policy_version": "gov-r1-v0.1",
+  "reason_codes": ["ROLE_ALLOWED", "DATA_CLASS_INTERNAL"]
+}
+```
+
+This connects to your backlog item where intake is a governed request-shaping service and feeds governance context into the rest of the system. 
+
+---
+
+# 4. Planner → Memory and Governance
+
+The Planner needs both layers.
+
+## 4.1 Planner → Memory
+
+Planner should call Memory before creating the `ExecutionPlan`.
+
+It should retrieve:
+
+```text
+Similar previous workflows
+Relevant SOPs / playbooks
+User or tenant preferences
+Past failures
+Approved planning templates
+Domain constraints
+Available tools/agents metadata
+```
+
+### API
+
+```http
+POST /memory/query
+```
+
+### Example payload
+
+```json
+{
+  "correlation_id": "corr-123",
+  "tenant_id": "tenant-a",
+  "namespace": "semantic.workflow_context",
+  "query_type": "planner_context",
+  "query": "invoice reconciliation workflow",
+  "filters": {
+    "workflow_type": "finance_ops",
+    "data_classification": ["public", "internal"],
+    "approved_only": true
+  },
+  "top_k": 5
+}
+```
+
+### Response
+
+```json
+{
+  "memory_results": [
+    {
+      "memory_id": "mem-001",
+      "memory_type": "semantic",
+      "title": "Invoice reconciliation SOP",
+      "content_summary": "Steps for matching invoices, POs, and payment records.",
+      "source": "enterprise_sop",
+      "confidence": 0.91,
+      "allowed_for_prompt": true
+    }
+  ]
+}
+```
+
+The Planner should **not receive raw unrestricted memory**. It should receive a sanitized `PlannerContextBundle`.
+
+```json
+{
+  "planner_context_bundle": {
+    "relevant_sops": [],
+    "similar_plans": [],
+    "domain_constraints": [],
+    "known_failure_patterns": [],
+    "approved_templates": []
+  }
+}
+```
+
+This aligns with your existing `R1-08`, `R1-09`, `R1-10`, and `R1-16` tasks, where planner intent understanding, template selection, planning generation, and memory hooks are marked as Memory/Governance-overlapping work. 
+
+---
+
+## 4.2 Planner → Governance
+
+After Planner creates a candidate `ExecutionPlan`, it should call Governance before sending the plan to the Orchestrator.
+
+### API
+
+```http
+POST /governance/evaluate-plan
+```
+
+### Payload
+
+```json
+{
+  "correlation_id": "corr-123",
+  "tenant_id": "tenant-a",
+  "plan_id": "plan-001",
+  "plan_version": 1,
+  "workflow_type": "finance_ops",
+  "risk_level": "medium",
+  "task_nodes": [
+    {
+      "task_id": "task-01",
+      "task_type": "retrieve_invoice_data",
+      "tool_required": "sap_invoice_api",
+      "data_classification": "confidential",
+      "requires_external_call": false
+    },
+    {
+      "task_id": "task-02",
+      "task_type": "generate_reconciliation_summary",
+      "tool_required": "llm_generation",
+      "data_classification": "confidential",
+      "requires_external_call": true
+    }
+  ]
+}
+```
+
+### Response
+
+```json
+{
+  "decision": "approve_with_controls",
+  "plan_allowed": true,
+  "blocked_tasks": [],
+  "approval_required_tasks": ["task-02"],
+  "required_controls": [
+    "mask_confidential_fields",
+    "reasoning_safe_logging",
+    "human_approval_before_external_send"
+  ],
+  "policy_version": "gov-r1-v0.1"
+}
+```
+
+The Planner then annotates the plan:
+
+```json
+{
+  "task_id": "task-02",
+  "governance": {
+    "approval_required": true,
+    "allowed_tools": ["llm_generation"],
+    "blocked_tools": ["external_email_send"],
+    "required_controls": ["mask_confidential_fields"]
+  }
+}
+```
+
+This maps to your backlog’s Planner annotation engine for risk, budget, evidence, timeout, and metadata annotations, plus the shared governance contract work. 
+
+---
+
+# 5. Orchestrator → Memory and Governance
+
+The Orchestrator is the heaviest integration point.
+
+It does not just execute tasks. It must ask:
+
+```text
+Can I run this task?
+Can I use this tool?
+Should I retry?
+Should I pause?
+Should I write a checkpoint?
+Should I resume after approval?
+```
+
+---
+
+## 5.1 Orchestrator → Governance before dispatch
+
+Before the Dispatcher calls an agent, MCP tool, API, database, or LLM, it must call Governance.
+
+```text
+Ready TaskNode
+   ↓
+Task Scheduler
+   ↓
+Dispatcher
+   ↓
+Governance: authorize_tool_call()
+   ↓
+Allowed? execute
+Approval required? pause
+Denied? supervisor decision
+```
+
+### API
+
+```http
+POST /governance/authorize-tool-call
+```
+
+### Payload
+
+```json
+{
+  "correlation_id": "corr-123",
+  "run_id": "run-001",
+  "plan_id": "plan-001",
+  "task_id": "task-02",
+  "tenant_id": "tenant-a",
+  "actor": {
+    "type": "orchestrator",
+    "service": "orchestrator-service"
+  },
+  "tool": {
+    "name": "llm_generation",
+    "category": "llm",
+    "external": true
+  },
+  "data_context": {
+    "classification": "confidential",
+    "contains_pii": true,
+    "contains_customer_data": true
+  },
+  "execution_context": {
+    "attempt": 1,
+    "timeout_seconds": 120,
+    "estimated_cost": 0.04
+  }
+}
+```
+
+### Response
+
+```json
+{
+  "decision": "approval_required",
+  "allowed": false,
+  "approval_type": "human",
+  "reason_codes": ["CONFIDENTIAL_DATA_EXTERNAL_LLM"],
+  "required_controls": ["redact_pii", "human_approval"],
+  "policy_version": "gov-r1-v0.1"
+}
+```
+
+This directly connects to the Dispatcher, Retry & Timeout, and Pause/Resume backlog items, where dispatching is the tool/API adapter layer and retry/pause behavior has Governance overlap. 
+
+---
+
+## 5.2 Orchestrator → Memory for checkpoints
+
+After every important task transition, the Orchestrator writes a `StateCheckpoint`.
+
+Events that should write checkpoints:
+
+```text
+TASK_READY
+TASK_STARTED
+TASK_SUCCEEDED
+TASK_FAILED
+TASK_RETRY_SCHEDULED
+TASK_TIMEOUT
+TASK_APPROVAL_WAIT
+TASK_SKIPPED
+RUN_PAUSED
+RUN_RESUMED
+REPLAN_REQUESTED
+ESCALATED
+```
+
+### API
+
+```http
+POST /memory/write-checkpoint
+```
+
+### Payload
+
+```json
+{
+  "correlation_id": "corr-123",
+  "run_id": "run-001",
+  "plan_id": "plan-001",
+  "plan_version": 1,
+  "task_id": "task-02",
+  "checkpoint_type": "TASK_FAILED",
+  "status": "failed",
+  "attempt": 2,
+  "timestamp": "2026-06-24T10:15:00Z",
+  "summary": "LLM generation failed due to timeout.",
+  "error": {
+    "error_type": "TIMEOUT",
+    "message": "Tool exceeded 120 seconds",
+    "retryable": true
+  },
+  "metrics": {
+    "latency_ms": 120000,
+    "cost": 0.03
+  },
+  "safe_for_replay": true
+}
+```
+
+The Orchestrator’s State Manager and Checkpoint Emitter are exactly the modules that should do this. Your backlog explicitly marks runtime state management as a memory-state boundary and says the Orchestrator memory integration handles execution-context reads and checkpoint/run write-backs. 
+
+---
+
+## 5.3 Orchestrator → Memory for execution context reads
+
+Before running a task, the Orchestrator may need previous task outputs.
+
+### API
+
+```http
+POST /memory/query
+```
+
+### Payload
+
+```json
+{
+  "correlation_id": "corr-123",
+  "tenant_id": "tenant-a",
+  "namespace": "working.run_context",
+  "query_type": "task_dependency_context",
+  "run_id": "run-001",
+  "task_id": "task-03",
+  "dependency_task_ids": ["task-01", "task-02"]
+}
+```
+
+### Response
+
+```json
+{
+  "dependency_context": [
+    {
+      "task_id": "task-01",
+      "status": "succeeded",
+      "output_ref": "mem-output-001",
+      "summary": "Retrieved 120 invoice records."
+    },
+    {
+      "task_id": "task-02",
+      "status": "succeeded",
+      "output_ref": "mem-output-002",
+      "summary": "Generated reconciliation candidate report."
+    }
+  ]
+}
+```
+
+Important design rule:
+
+```text
+Orchestrator should pass references and summaries, not huge raw payloads.
+```
+
+Raw payloads should stay in object storage, database, or secure memory store.
+
+---
+
+# 6. Supervisor → Memory and Governance
+
+Supervisor makes runtime decisions.
+
+It needs Memory to know:
+
+```text
+What happened?
+How many retries happened?
+Was this failure seen before?
+What did the previous checkpoint say?
+What is the current plan state?
+What risk level was assigned?
+```
+
+It needs Governance to decide:
+
+```text
+Can execution continue?
+Should it retry?
+Should it re-plan?
+Should it escalate?
+Should it stop?
+```
+
+---
+
+## 6.1 Supervisor → Memory
+
+### API
+
+```http
+POST /memory/get-run-history
+```
+
+### Payload
+
+```json
+{
+  "correlation_id": "corr-123",
+  "tenant_id": "tenant-a",
+  "run_id": "run-001",
+  "include": [
+    "checkpoints",
+    "failed_tasks",
+    "retry_history",
+    "policy_decisions",
+    "approval_waits"
+  ]
+}
+```
+
+### Response
+
+```json
+{
+  "run_id": "run-001",
+  "current_status": "running_with_failure",
+  "failed_tasks": [
+    {
+      "task_id": "task-02",
+      "failure_type": "TIMEOUT",
+      "attempts": 2,
+      "last_checkpoint_id": "chk-009"
+    }
+  ],
+  "retry_count": 2,
+  "approval_waits": [],
+  "previous_decisions": []
+}
+```
+
+The Supervisor’s Checkpoint Reader and Failure Analyzer should consume this data. Your backlog defines those as checkpoint intake/state interpretation and failure/retry-exhaustion/low-confidence analysis. 
+
+---
+
+## 6.2 Supervisor → Governance
+
+### API
+
+```http
+POST /governance/evaluate-supervisor-decision
+```
+
+### Payload
+
+```json
+{
+  "correlation_id": "corr-123",
+  "tenant_id": "tenant-a",
+  "run_id": "run-001",
+  "plan_id": "plan-001",
+  "task_id": "task-02",
+  "current_state": {
+    "status": "failed",
+    "failure_type": "TIMEOUT",
+    "attempts": 2,
+    "max_retries": 3,
+    "risk_level": "medium"
+  },
+  "candidate_decisions": ["retry", "replan", "escalate", "stop"],
+  "supervisor_analysis": {
+    "retryable": true,
+    "confidence": 0.62,
+    "failure_pattern": "tool_timeout"
+  }
+}
+```
+
+### Response
+
+```json
+{
+  "decision": "retry",
+  "allowed": true,
+  "max_additional_retries": 1,
+  "if_retry_fails": "replan",
+  "reason_codes": ["RETRY_WITHIN_LIMIT", "MEDIUM_RISK_ALLOWED"],
+  "policy_version": "gov-r1-v0.1"
+}
+```
+
+Then Supervisor creates:
+
+```json
+{
+  "supervisor_decision": "retry",
+  "decision_reason": "Retry allowed within policy limit.",
+  "next_action": "orchestrator.retry_task",
+  "policy_decision_ref": "pol-dec-778"
+}
+```
+
+This aligns with the Supervisor Policy/Risk Evaluator and Decision Engine tasks in the backlog, where Release 1 supervision is deterministic and reviewable. 
+
+---
+
+# 7. Main technical table
+
+## Control plane module interaction with Memory and Governance
+
+| Control Plane Area | Module                       |          Talks to Memory? | Memory API / Tool                                           | Talks to Governance? | Governance API / Tool                                      | When It Talks                             | Technical Purpose                                                                        | Output Used For                        |
+| ------------------ | ---------------------------- | ------------------------: | ----------------------------------------------------------- | -------------------: | ---------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------- |
+| Foundation         | Request Intake / Normalizer  |                  Optional | `query_memory()` for user/tenant context                    |                  Yes | `evaluate_request_policy()`                                | Before Planner                            | Normalize request, enrich tenant/role/risk context, reject disallowed requests early     | `RequestEnvelope`, `GovernanceContext` |
+| Foundation         | Trace Context Manager        | No direct business memory | May attach `correlation_id` to memory writes                |      Yes, indirectly | Audit event metadata                                       | Every call                                | Ensures all Memory/Governance calls carry `correlation_id`, `tenant_id`, `run_id`        | Traceable execution                    |
+| Planner            | Intent Understanding         |                       Yes | `query_memory()`                                            |                  Yes | `evaluate_request_policy()` or `evaluate_planning_scope()` | Before plan generation                    | Retrieve similar requests, user context, workflow type hints; ensure planning is allowed | Intent classification, workflow type   |
+| Planner            | Template / Playbook Selector |                       Yes | `search_semantic_context()`                                 |             Optional | `filter_allowed_templates()`                               | During planning                           | Retrieve approved templates, SOPs, previous plans                                        | Selected planning template             |
+| Planner            | Planning Engine              |                       Yes | `query_memory()`                                            |                  Yes | `evaluate_plan_policy()`                                   | During and after plan draft               | Ground plan in SOPs/history; check if generated plan violates policy                     | Candidate `ExecutionPlan`              |
+| Planner            | Plan Builder                 |                       Yes | `write_memory()`                                            |             Optional | `attach_policy_metadata()`                                 | After plan object creation                | Store plan artifact and version metadata                                                 | Versioned plan record                  |
+| Planner            | DAG Validator                |                No usually | None                                                        |             Optional | `evaluate_plan_policy()`                                   | After DAG validation                      | Governance may reject forbidden dependency/tool paths                                    | Validated and allowed DAG              |
+| Planner            | Annotation Engine            |                  Optional | `query_memory()` for known risk patterns                    |                  Yes | `classify_task_risk()`, `get_required_controls()`          | Before sending plan to Orchestrator       | Add risk, budget, timeout, approval, evidence requirements to each `TaskNode`            | Governed task metadata                 |
+| Planner            | Replan Handler               |                       Yes | `get_run_history()`, `get_plan_history()`, `query_memory()` |                  Yes | `evaluate_replan_policy()`                                 | When Supervisor requests replan           | Use partial state/failure reason to create revised plan within policy                    | `ReplanRequest`, new `ExecutionPlan`   |
+| Orchestrator       | Plan Intake / Loader         |                       Yes | `get_plan_context()`                                        |                  Yes | `verify_plan_execution_allowed()`                          | Before execution starts                   | Confirm plan version, policy status, memory references                                   | Execution bootstrap                    |
+| Orchestrator       | Task Scheduler               |                  Optional | `query_memory()` for dependency summaries                   |             Optional | `evaluate_task_policy()`                                   | When selecting ready tasks                | Avoid scheduling blocked/approval-wait tasks                                             | Ready task queue                       |
+| Orchestrator       | Dependency Resolver          |                       Yes | `query_memory()` for dependency outputs                     |           No usually | None                                                       | Before task execution                     | Load previous task summaries/output refs                                                 | Task input context                     |
+| Orchestrator       | Dispatcher                   |                 Sometimes | `query_memory()` for tool credentials refs/context refs     |                  Yes | `authorize_tool_call()`                                    | Immediately before agent/tool/API call    | Enforce tool allow/deny/approval-required decision                                       | Execute, pause, or deny dispatch       |
+| Orchestrator       | Execution Engine             |                       Yes | `write_memory()`                                            |                  Yes | `evaluate_runtime_policy()`                                | During task lifecycle                     | Persist task output summaries; apply runtime constraints                                 | Runtime state transitions              |
+| Orchestrator       | State Manager                |                       Yes | `write_memory()`, `update_run_state()`                      |            No direct | None                                                       | On every state change                     | Maintain current task/run status                                                         | Source of truth for runtime            |
+| Orchestrator       | Checkpoint Emitter           |                       Yes | `write_checkpoint()`                                        |             Optional | `create_audit_decision()` if policy-related                | On task start/success/failure/retry/pause | Persist `StateCheckpoint` records                                                        | Supervisor input, replay, audit        |
+| Orchestrator       | Retry & Timeout Controller   |                       Yes | `get_retry_history()`                                       |                  Yes | `evaluate_retry_policy()`                                  | On failure/timeout                        | Decide retry eligibility and max attempts                                                | Retry, replan, or escalate             |
+| Orchestrator       | Pause / Resume Controller    |                       Yes | `write_checkpoint()`                                        |                  Yes | `evaluate_approval_policy()`                               | On approval-required tasks                | Pause run safely until approval or resume signal                                         | Approval wait state                    |
+| Orchestrator       | Replan Integrator            |                       Yes | `get_plan_history()`, `write_memory()`                      |                  Yes | `verify_revised_plan_allowed()`                            | When new plan is received                 | Validate and resume execution from new plan version                                      | Updated runtime graph                  |
+| Supervisor         | Checkpoint Reader            |                       Yes | `get_run_history()`, `get_latest_checkpoint()`              |            No direct | None                                                       | Continuously or on events                 | Understand current run/task state                                                        | Supervisor analysis                    |
+| Supervisor         | Policy / Risk Evaluator      |                       Yes | `query_memory()` for historical risk/failures               |                  Yes | `evaluate_supervisor_decision()`                           | Before decision                           | Combine runtime state + risk + policy                                                    | Continue/retry/replan/escalate/stop    |
+| Supervisor         | Failure Analyzer             |                       Yes | `get_failure_history()`                                     |             Optional | `classify_failure_policy()`                                | On failure/low confidence                 | Identify retry exhaustion, recurring failure, confidence drop                            | Failure reason                         |
+| Supervisor         | Decision Engine              |                       Yes | `write_memory()`                                            |                  Yes | `evaluate_supervisor_decision()`                           | On every supervisory decision             | Make deterministic decision and store rationale                                          | `SupervisorDecision`                   |
+| Supervisor         | Escalation Manager           |                       Yes | `write_memory()`                                            |                  Yes | `get_escalation_policy()`                                  | When escalation required                  | Create escalation payload with policy reason                                             | Human handoff artifact                 |
+| Supervisor         | Replan Trigger               |                       Yes | `write_memory()`                                            |                  Yes | `evaluate_replan_policy()`                                 | When replan needed                        | Create policy-compliant `ReplanRequest`                                                  | Planner replan input                   |
+| Shared             | Audit Decision Emitter       |                  Optional | `write_memory()` for audit refs                             |                  Yes | `create_audit_record()`                                    | After any policy decision                 | Preserve explainable governance trail                                                    | Audit trail                            |
+| Shared             | Memory Context Assembler     |                       Yes | All memory read APIs                                        |             Optional | `filter_memory_by_policy()`                                | Before injecting memory into LLM/planner  | Sanitize and compress memory                                                             | Safe context bundle                    |
+| Shared             | Governance Context Builder   |                  Optional | `query_memory()` for tenant/workflow metadata               |                  Yes | All policy APIs                                            | Before policy calls                       | Build complete policy payload                                                            | Consistent governance decisions        |
+
+---
+
+# 8. Recommended API boundary
+
+## Memory APIs from control plane
+
+| API                         | Called By                               |                     Blocking? | Purpose                                          |
+| --------------------------- | --------------------------------------- | ----------------------------: | ------------------------------------------------ |
+| `query_memory()`            | Planner, Orchestrator, Supervisor       |                           Yes | Retrieve relevant context                        |
+| `search_semantic_context()` | Planner                                 |                           Yes | Retrieve SOPs, templates, KB, previous workflows |
+| `write_memory()`            | Planner, Orchestrator, Supervisor       |                 Usually async | Store plan, outputs, decisions                   |
+| `write_checkpoint()`        | Orchestrator                            | Prefer sync or durable outbox | Persist state checkpoint                         |
+| `get_run_history()`         | Supervisor, Planner Replan Handler      |                           Yes | Retrieve runtime history                         |
+| `get_plan_history()`        | Planner, Orchestrator Replan Integrator |                           Yes | Retrieve prior plan versions                     |
+| `get_failure_history()`     | Supervisor                              |                           Yes | Analyze recurring failures                       |
+| `update_run_state()`        | Orchestrator                            |                          Sync | Maintain current execution state                 |
+
+---
+
+## Governance APIs from control plane
+
+| API                              | Called By                 |                Blocking? | Purpose                                       |
+| -------------------------------- | ------------------------- | -----------------------: | --------------------------------------------- |
+| `evaluate_request_policy()`      | Intake                    |                      Yes | Allow/deny request                            |
+| `evaluate_plan_policy()`         | Planner                   |                      Yes | Validate generated plan                       |
+| `classify_task_risk()`           | Planner Annotation Engine |                      Yes | Attach risk/control metadata                  |
+| `authorize_tool_call()`          | Orchestrator Dispatcher   |                      Yes | Allow/deny/approval-required before tool call |
+| `evaluate_runtime_policy()`      | Orchestrator              |                      Yes | Retry, timeout, pause/resume decisions        |
+| `evaluate_retry_policy()`        | Retry Controller          |                      Yes | Decide retry eligibility                      |
+| `evaluate_approval_policy()`     | Pause/Resume Controller   |                      Yes | Determine approval requirement                |
+| `evaluate_supervisor_decision()` | Supervisor                |                      Yes | Continue/retry/replan/escalate/stop           |
+| `get_escalation_policy()`        | Escalation Manager        |                      Yes | Decide escalation route                       |
+| `create_audit_record()`          | All layers                | Prefer async but durable | Store policy decision audit trail             |
+
+---
+
+# 9. Important implementation design
+
+## 9.1 Governance calls should be blocking
+
+For Release 1, Governance should be a gate.
+
+```python
+decision = governance_client.authorize_tool_call(task, tool, context)
+
+if decision.decision == "allow":
+    execute_tool()
+
+elif decision.decision == "approval_required":
+    orchestrator.pause_task(task_id)
+    checkpoint_emitter.emit("APPROVAL_WAIT")
+
+elif decision.decision == "deny":
+    supervisor.evaluate_blocked_task(task_id, decision)
+```
+
+No tool/API/agent call should happen before governance authorization.
+
+---
+
+## 9.2 Memory writes should use an outbox pattern
+
+Do not make execution fragile because a non-critical memory write fails.
+
+Recommended pattern:
+
+```text
+Orchestrator
+   ↓
+Local durable outbox
+   ↓
+Memory write worker
+   ↓
+Memory service
+```
+
+But some memory writes are critical.
+
+| Memory Write              | Critical? | Recommended Mode                  |
+| ------------------------- | --------: | --------------------------------- |
+| Plan version write        |       Yes | Sync                              |
+| Task output summary       |    Medium | Async with durable outbox         |
+| Checkpoint write          |       Yes | Sync or durable outbox with retry |
+| Supervisor decision write |       Yes | Sync                              |
+| Debug trace write         |        No | Async                             |
+| Semantic memory update    |        No | Async                             |
+
+---
+
+## 9.3 Memory reads must be policy-filtered
+
+Planner should not directly receive all retrieved memory.
+
+Correct flow:
+
+```text
+Planner
+  → MemoryClient.query()
+  → GovernanceClient.filter_memory_access()
+  → MemoryContextAssembler.compress()
+  → Planner LLM / planning engine
+```
+
+This prevents leaking restricted context into plans or LLM prompts.
+
+---
+
+## 9.4 Every call must carry standard metadata
+
+Every Memory and Governance call should include:
+
+```json
+{
+  "correlation_id": "...",
+  "tenant_id": "...",
+  "user_id": "...",
+  "run_id": "...",
+  "plan_id": "...",
+  "task_id": "...",
+  "policy_version": "...",
+  "data_classification": "...",
+  "trace_context": {}
+}
+```
+
+This is mandatory for enterprise auditability.
+
+---
+
+# 10. End-to-end execution sequence
+
+```text
+1. Request Intake receives user request
+2. Intake calls Governance: evaluate_request_policy()
+3. Planner calls Memory: query_memory() + search_semantic_context()
+4. Planner creates candidate ExecutionPlan
+5. Planner calls Governance: evaluate_plan_policy()
+6. Planner writes plan version to Memory
+7. Orchestrator loads approved plan
+8. Orchestrator schedules ready TaskNode
+9. Dispatcher calls Governance: authorize_tool_call()
+10. If allowed, Dispatcher executes tool/agent/API
+11. Orchestrator writes StateCheckpoint to Memory
+12. Supervisor reads checkpoints/run history from Memory
+13. Supervisor calls Governance: evaluate_supervisor_decision()
+14. Supervisor decides continue / retry / replan / escalate / stop
+15. If replan, Supervisor writes ReplanRequest and Planner reads Memory again
+```
+
+---
+
+# 11. Clean architecture view
+
+```text
+                  ┌────────────────────────┐
+                  │    Governance Layer     │
+                  │ Policy / Risk / Audit   │
+                  └──────────▲─────────────┘
+                             │
+                             │ blocking policy calls
+                             │
+┌────────────────────────────┼────────────────────────────┐
+│                    Control Plane                         │
+│                                                          │
+│  ┌──────────┐     ┌──────────────┐     ┌──────────────┐ │
+│  │ Planner  │────▶│ Orchestrator │────▶│ Supervisor   │ │
+│  └────▲─────┘     └──────▲───────┘     └──────▲───────┘ │
+│       │                  │                    │         │
+│       │                  │                    │         │
+│  MemoryClient       CheckpointPublisher   RunHistoryReader
+│  PolicyClient       PolicyClient          PolicyClient   │
+└───────┼──────────────────┼────────────────────┼─────────┘
+        │                  │                    │
+        ▼                  ▼                    ▼
+                  ┌────────────────────────┐
+                  │  Memory Management     │
+                  │ Context / State / Runs  │
+                  └────────────────────────┘
+```
+
+---
+
+# 12. My recommendation for Release 1
+
+For Release 1, keep the integration simple and enterprise-safe:
+
+```text
+Planner:
+  Memory read + plan memory write + plan governance check
+
+Orchestrator:
+  Governance before dispatch + checkpoint memory write + retry/pause policy
+
+Supervisor:
+  Memory run-history read + governance-backed decision + decision memory write
+```
+
+Do **not** make Memory or Governance agentic in Release 1. They should be deterministic, schema-driven, versioned, and auditable. The agentic reasoning should stay mainly inside Planner and Replan Handler for now.
+
+********************************************
+
+
+Yes, DD. For **Release 1**, the main thing to understand is this:
+
+> **Release 1 is not about building a fully intelligent agentic platform. It is about building a reliable, auditable, contract-driven production core.**
+
+Your current backlog already covers the main 14-week control-plane work: architecture baseline, contracts, Planner, Orchestrator, Supervisor, shared Memory/Governance/Observability alignment, integration, testing, and hardening. 
+
+Now the important things you should additionally keep in mind are below.
+
+---
+
+# 1. What you must lock early
+
+## 1. Architecture boundary
+
+Clearly define what belongs to:
+
+```text
+Control Plane:
+Planner + Orchestrator + Supervisor
+
+Memory Layer:
+Context, state, run history, checkpoints, semantic retrieval
+
+Governance Layer:
+Policy, risk, authorization, approval, escalation, audit
+
+Observability Layer:
+Logs, traces, metrics, dashboards, reason-safe summaries
+```
+
+Do not let responsibilities overlap too much.
+
+---
+
+## 2. Contracts before implementation
+
+Before coding too much, freeze these schemas:
+
+| Contract             | Used By                             |
+| -------------------- | ----------------------------------- |
+| `RequestEnvelope`    | Intake → Planner                    |
+| `ExecutionPlan`      | Planner → Orchestrator              |
+| `TaskNode`           | Planner / Orchestrator              |
+| `StateCheckpoint`    | Orchestrator → Supervisor / Memory  |
+| `SupervisorDecision` | Supervisor → Orchestrator / Planner |
+| `ReplanRequest`      | Supervisor → Planner                |
+| `PolicyDecision`     | Governance → Control Plane          |
+| `MemoryRecord`       | Memory → Control Plane              |
+
+This is the backbone of Release 1.
+
+---
+
+## 3. Memory and Governance should not be afterthoughts
+
+You should treat Memory and Governance as **parallel Release 1 workstreams**, not future add-ons.
+
+Minimum Release 1 expectation:
+
+| Layer      | Minimum R1 Capability                                                                          |
+| ---------- | ---------------------------------------------------------------------------------------------- |
+| Memory     | Context retrieval, plan history, checkpoints, run history, replan support                      |
+| Governance | Request check, plan check, tool authorization, retry/approval/escalation policy, audit records |
+
+---
+
+## 4. Keep Release 1 deterministic
+
+Do not make everything agentic now.
+
+For Release 1:
+
+| Area                         | R1 Approach                       |
+| ---------------------------- | --------------------------------- |
+| Planner                      | Hybrid / agentic allowed          |
+| Replanning                   | Hybrid / agentic allowed          |
+| Orchestrator                 | Deterministic runtime engine      |
+| Supervisor                   | Mostly rule-based / deterministic |
+| Governance                   | Fully deterministic               |
+| Memory                       | API-driven and deterministic      |
+| Retry / timeout / escalation | Rule-driven                       |
+| Audit                        | Structured and deterministic      |
+
+This will make your system easier to defend in enterprise reviews.
+
+---
+
+# 2. Biggest Release 1 risks
+
+| Risk                              | Why It Matters                              | Mitigation                                     |
+| --------------------------------- | ------------------------------------------- | ---------------------------------------------- |
+| Too much scope                    | Agentic platforms can explode in complexity | Define strict R1 non-goals                     |
+| Memory/Governance not ready       | Control plane will be blocked               | Create parallel backlog and weekly checkpoints |
+| Schema changes late               | Integration will break                      | Freeze v0.1 schemas early                      |
+| Orchestrator becomes too smart    | Hard to debug and govern                    | Keep Orchestrator deterministic                |
+| Supervisor decision logic unclear | Retry/replan/escalate becomes messy         | Define exact decision matrix                   |
+| No mock services                  | Control team waits for other teams          | Build mock Memory and Governance APIs early    |
+| Testing starts too late           | End-to-end flow will fail near release      | Start contract tests from Week 2               |
+| No acceptance criteria            | Release signoff becomes subjective          | Define R1 exit criteria now                    |
+
+---
+
+# 3. Very important design decisions to document now
+
+You should document these decisions as **ADRs — Architecture Decision Records**.
+
+| ADR     | Decision                                                                       |
+| ------- | ------------------------------------------------------------------------------ |
+| ADR-001 | Release 1 will use contract-first architecture                                 |
+| ADR-002 | Planner can be hybrid/agentic; Orchestrator remains deterministic              |
+| ADR-003 | Governance is blocking before tool/API/agent execution                         |
+| ADR-004 | Memory writes use checkpoint/event model                                       |
+| ADR-005 | Supervisor decisions are deterministic in R1                                   |
+| ADR-006 | Replanning is triggered only through `ReplanRequest`                           |
+| ADR-007 | All APIs must carry `correlation_id`, `tenant_id`, `run_id`, `plan_id`         |
+| ADR-008 | Logs must be reasoning-safe and not expose sensitive internal chain-of-thought |
+| ADR-009 | Memory access must be policy-filtered before use in planning                   |
+| ADR-010 | R1 will support limited representative workflows, not all enterprise use cases |
+
+---
+
+# 4. What should be your Release 1 success criteria?
+
+By the end of Release 1, you should be able to demonstrate this:
+
+```text
+1. User request enters the system
+2. Request is normalized
+3. Governance allows or blocks the request
+4. Planner generates a valid ExecutionPlan
+5. Planner checks Memory for context
+6. Planner sends plan for Governance validation
+7. Orchestrator executes task nodes
+8. Governance authorizes tool/API calls
+9. Orchestrator emits StateCheckpoints
+10. Supervisor reads state and evaluates failures
+11. Supervisor decides continue / retry / replan / escalate / stop
+12. System handles at least one failure and replans successfully
+13. System emits trace-safe logs and audit records
+14. Final output is explainable and reviewable
+```
+
+That is the core Release 1 demo.
+
+---
+
+# 5. Recommended Release 1 demo workflows
+
+Do not try 10 workflows. Pick **2–3 controlled workflows**.
+
+| Workflow                          | Why Good for R1                                           |
+| --------------------------------- | --------------------------------------------------------- |
+| Simple document/Q&A workflow      | Tests planning, retrieval, answer generation              |
+| Enterprise ticket triage workflow | Tests classification, routing, tool use, escalation       |
+| Report generation workflow        | Tests multi-step planning, task execution, review, replan |
+
+Each workflow should include:
+
+```text
+Normal success path
+Tool failure path
+Policy approval path
+Replan path
+Escalation path
+```
+
+---
+
+# 6. What you should ask your team now
+
+In the next working discussion, ask these questions:
+
+| Area          | Question                                   |
+| ------------- | ------------------------------------------ |
+| Planner       | What is the exact `ExecutionPlan` schema?  |
+| Orchestrator  | What task states are supported?            |
+| Supervisor    | What is the exact decision matrix?         |
+| Memory        | What APIs will be ready by Week 3–4?       |
+| Governance    | Is policy evaluation blocking or advisory? |
+| Observability | What trace fields are mandatory?           |
+| Testing       | What are the 3 golden workflows?           |
+| Release       | What are the R1 signoff criteria?          |
+
+---
+
+# 7. Your Release 1 summary
+
+## Release 1 Name
+
+**Agentic Control Plane — Production Core Release**
+
+## Main Goal
+
+Build the production-grade core loop:
+
+```text
+Request → Plan → Execute → Supervise → Retry / Replan / Escalate / Stop
+```
+
+## Main Components
+
+| Component     | Role                                                                  |
+| ------------- | --------------------------------------------------------------------- |
+| Planner       | Understands request and creates structured execution plan             |
+| Orchestrator  | Executes plan through tasks, tools, agents, and APIs                  |
+| Supervisor    | Monitors runtime state and decides control actions                    |
+| Memory        | Provides context, state, checkpoints, history, and replan support     |
+| Governance    | Provides policy, risk, authorization, approval, escalation, and audit |
+| Observability | Provides traceability, logs, metrics, and release confidence          |
+
+---
+
+# 8. Final recommended framing
+
+For leadership or architecture review, describe Release 1 like this:
+
+> **Release 1 delivers the production core of the Enterprise Agentic Layer: a contract-driven Planner, deterministic Orchestrator, and governed Supervisor integrated with Memory, Policy Governance, and Observability. The release focuses on safe execution, traceable decisions, controlled re-planning, policy-aware tool usage, checkpointed runtime state, and enterprise-ready auditability.**
+
+---
+
+# 9. My final advice
+
+For Release 1, do not chase advanced intelligence first.
+
+Chase:
+
+```text
+Correct contracts
+Clear ownership
+Deterministic execution
+Governed tool usage
+Checkpointed state
+Safe replanning
+Auditability
+Testable workflows
+```
+
+Once this foundation is stable, Release 2 and Release 3 can add advanced intelligence, reflection, learning loops, adaptive planning, and smarter memory.
+
+
+********************************************
+
+Yes, DD. In this context, **contracts** means the **standard structured payloads** exchanged between layers.
+
+Your Release 1 backlog already has a task to define these: `RequestEnvelope`, `ExecutionPlan`, `TaskNode`, `StateCheckpoint`, `SupervisorDecision`, and `ReplanRequest`. This is the right foundation because Planner, Orchestrator, Supervisor, Memory, and Governance cannot integrate safely unless these payloads are frozen early. 
+
+Think of contracts as:
+
+> **“What exact data will move from one module to another, in what structure, with what mandatory fields, and with what validation rules?”**
+
+---
+
+# 1. Common fields every contract should carry
+
+Every contract should contain a common metadata block.
+
+```json
+{
+  "contract_version": "1.0.0",
+  "correlation_id": "corr-123",
+  "tenant_id": "tenant-a",
+  "user_id": "user-01",
+  "session_id": "sess-001",
+  "run_id": "run-001",
+  "timestamp": "2026-05-04T10:00:00Z",
+  "source_component": "planner",
+  "data_classification": "internal",
+  "trace_context": {
+    "request_id": "req-001",
+    "parent_span_id": "span-001"
+  }
+}
+```
+
+This common block helps with:
+
+| Need                  | Why it matters                |
+| --------------------- | ----------------------------- |
+| `contract_version`    | Allows schema evolution       |
+| `correlation_id`      | End-to-end tracing            |
+| `tenant_id`           | Multi-tenant isolation        |
+| `user_id` / `role`    | Governance and access control |
+| `run_id`              | Runtime execution tracking    |
+| `data_classification` | Privacy and policy checks     |
+| `trace_context`       | Observability integration     |
+
+---
+
+# 2. `RequestEnvelope`
+
+## Purpose
+
+This is the normalized request sent from **Request Intake → Planner**.
+
+It tells the Planner:
+
+```text
+Who is asking?
+What do they want?
+What context is allowed?
+What constraints apply?
+What risk/policy metadata already exists?
+```
+
+## Should contain
+
+| Field                 | Meaning                                 |
+| --------------------- | --------------------------------------- |
+| `request_id`          | Unique request ID                       |
+| `user_query`          | Original user request                   |
+| `normalized_request`  | Cleaned/standardized request            |
+| `request_type`        | Workflow category                       |
+| `tenant_id`           | Tenant/org context                      |
+| `user_context`        | Role, department, permissions           |
+| `business_context`    | Domain, application, use case           |
+| `input_artifacts`     | Uploaded docs/files/API inputs          |
+| `constraints`         | Time, cost, tool, data constraints      |
+| `governance_context`  | Initial risk/policy metadata            |
+| `memory_context_refs` | Optional references to previous context |
+| `expected_output`     | Desired output format                   |
+| `priority`            | Normal/high/urgent                      |
+| `data_classification` | Public/internal/confidential/restricted |
+
+## Example
+
+```json
+{
+  "contract_version": "1.0.0",
+  "request_id": "req-001",
+  "correlation_id": "corr-123",
+  "tenant_id": "tenant-a",
+  "user_id": "user-01",
+  "user_query": "Create a reconciliation workflow for failed invoices",
+  "normalized_request": "Generate an enterprise workflow to identify, validate, and summarize failed invoice reconciliation cases.",
+  "request_type": "workflow_generation",
+  "business_context": {
+    "domain": "finance_operations",
+    "application": "invoice_reconciliation"
+  },
+  "user_context": {
+    "role": "business_user",
+    "department": "finance",
+    "permissions": ["read_invoice_data", "generate_report"]
+  },
+  "constraints": {
+    "max_runtime_seconds": 600,
+    "max_cost_usd": 2.0,
+    "allowed_tools": ["sap_invoice_api", "llm_summary_tool"],
+    "blocked_tools": ["external_email_send"]
+  },
+  "governance_context": {
+    "risk_level": "medium",
+    "policy_decision_ref": "pol-001"
+  },
+  "expected_output": {
+    "format": "structured_report",
+    "requires_citations": true
+  },
+  "data_classification": "confidential"
+}
+```
+
+---
+
+# 3. `ExecutionPlan`
+
+## Purpose
+
+This is the structured plan sent from **Planner → Orchestrator**.
+
+It tells the Orchestrator:
+
+```text
+What tasks need to run?
+In what order?
+With what dependencies?
+Which tools/agents are needed?
+What policies, budgets, timeouts, and evidence requirements apply?
+```
+
+## Should contain
+
+| Field                   | Meaning                              |
+| ----------------------- | ------------------------------------ |
+| `plan_id`               | Unique plan ID                       |
+| `plan_version`          | Version number                       |
+| `request_id`            | Original request reference           |
+| `workflow_type`         | Type of workflow                     |
+| `plan_status`           | draft/approved/rejected/superseded   |
+| `task_nodes`            | List of executable tasks             |
+| `edges`                 | Dependencies between tasks           |
+| `global_constraints`    | Budget, timeout, allowed tools       |
+| `risk_annotations`      | Risk metadata                        |
+| `approval_requirements` | Human approval requirements          |
+| `evidence_requirements` | What evidence each task must produce |
+| `memory_refs`           | Context used during planning         |
+| `policy_decision_ref`   | Governance approval reference        |
+| `created_by`            | Planner/service                      |
+| `created_at`            | Timestamp                            |
+
+## Example
+
+```json
+{
+  "contract_version": "1.0.0",
+  "plan_id": "plan-001",
+  "plan_version": 1,
+  "request_id": "req-001",
+  "correlation_id": "corr-123",
+  "workflow_type": "finance_reconciliation",
+  "plan_status": "approved",
+  "goal": "Identify failed invoice reconciliation cases and generate a summary report.",
+  "task_nodes": [
+    {
+      "task_id": "task-01",
+      "name": "Retrieve failed invoice records",
+      "task_type": "data_retrieval",
+      "tool": "sap_invoice_api",
+      "dependencies": [],
+      "expected_output_type": "invoice_record_list"
+    },
+    {
+      "task_id": "task-02",
+      "name": "Analyze failure patterns",
+      "task_type": "analysis",
+      "tool": "llm_analysis_tool",
+      "dependencies": ["task-01"],
+      "expected_output_type": "failure_pattern_summary"
+    }
+  ],
+  "edges": [
+    {
+      "from": "task-01",
+      "to": "task-02",
+      "dependency_type": "output_required"
+    }
+  ],
+  "global_constraints": {
+    "max_runtime_seconds": 600,
+    "max_retries_per_task": 2,
+    "max_cost_usd": 2.0
+  },
+  "risk_annotations": {
+    "overall_risk": "medium",
+    "contains_confidential_data": true
+  },
+  "approval_requirements": [
+    {
+      "task_id": "task-02",
+      "approval_required": true,
+      "reason": "Confidential data used with LLM analysis tool"
+    }
+  ],
+  "memory_refs": ["mem-101", "mem-102"],
+  "policy_decision_ref": "pol-plan-001"
+}
+```
+
+---
+
+# 4. `TaskNode`
+
+## Purpose
+
+This is the smallest executable unit inside the plan.
+
+It is used by both:
+
+```text
+Planner → to define the task
+Orchestrator → to execute the task
+Supervisor → to inspect task state/failure
+Governance → to evaluate task/tool risk
+```
+
+## Should contain
+
+| Field               | Meaning                                         |
+| ------------------- | ----------------------------------------------- |
+| `task_id`           | Unique task ID                                  |
+| `name`              | Human-readable task name                        |
+| `description`       | What the task does                              |
+| `task_type`         | retrieval/analysis/generation/action/validation |
+| `agent_required`    | Whether an agent is needed                      |
+| `tool`              | Tool/API/agent to call                          |
+| `dependencies`      | Previous tasks required                         |
+| `input_refs`        | Memory/artifact references                      |
+| `output_contract`   | Expected output structure                       |
+| `timeout_seconds`   | Execution timeout                               |
+| `retry_policy`      | Retry count/backoff                             |
+| `risk_level`        | Low/medium/high/restricted                      |
+| `approval_required` | Whether human approval is needed                |
+| `evidence_required` | Evidence needed for audit/supervision           |
+| `fallback_strategy` | Retry/replan/escalate/skip                      |
+| `status`            | pending/running/succeeded/failed/etc.           |
+
+## Example
+
+```json
+{
+  "task_id": "task-02",
+  "name": "Analyze failure patterns",
+  "description": "Analyze failed invoice records and identify common reconciliation failure causes.",
+  "task_type": "analysis",
+  "agent_required": true,
+  "agent_type": "analysis_agent",
+  "tool": {
+    "tool_name": "llm_analysis_tool",
+    "tool_type": "llm",
+    "requires_external_call": false
+  },
+  "dependencies": ["task-01"],
+  "input_refs": [
+    {
+      "source_task_id": "task-01",
+      "artifact_ref": "artifact-invoice-records-001"
+    }
+  ],
+  "output_contract": {
+    "type": "failure_pattern_summary",
+    "required_fields": ["top_failure_reasons", "confidence", "evidence"]
+  },
+  "timeout_seconds": 120,
+  "retry_policy": {
+    "max_retries": 2,
+    "backoff_strategy": "exponential"
+  },
+  "risk_level": "medium",
+  "approval_required": true,
+  "evidence_required": true,
+  "fallback_strategy": "replan_on_failure",
+  "status": "pending"
+}
+```
+
+---
+
+# 5. `StateCheckpoint`
+
+## Purpose
+
+This is emitted by **Orchestrator → Supervisor / Memory**.
+
+It tells the system:
+
+```text
+What happened during execution?
+Which task changed state?
+Did it succeed, fail, timeout, retry, pause, or need approval?
+```
+
+## Should contain
+
+| Field                 | Meaning                                          |
+| --------------------- | ------------------------------------------------ |
+| `checkpoint_id`       | Unique checkpoint ID                             |
+| `run_id`              | Current execution run                            |
+| `plan_id`             | Plan being executed                              |
+| `plan_version`        | Plan version                                     |
+| `task_id`             | Task associated with checkpoint                  |
+| `checkpoint_type`     | TASK_STARTED / TASK_SUCCEEDED / TASK_FAILED etc. |
+| `previous_status`     | Previous task/run status                         |
+| `current_status`      | Current task/run status                          |
+| `attempt`             | Retry attempt count                              |
+| `input_refs`          | Inputs used                                      |
+| `output_refs`         | Outputs generated                                |
+| `error_info`          | Error details, if failed                         |
+| `metrics`             | Latency, cost, token usage                       |
+| `policy_decision_ref` | Related governance decision                      |
+| `safe_summary`        | Trace-safe human-readable summary                |
+| `created_at`          | Timestamp                                        |
+
+## Example
+
+```json
+{
+  "contract_version": "1.0.0",
+  "checkpoint_id": "chk-001",
+  "correlation_id": "corr-123",
+  "run_id": "run-001",
+  "plan_id": "plan-001",
+  "plan_version": 1,
+  "task_id": "task-02",
+  "checkpoint_type": "TASK_FAILED",
+  "previous_status": "running",
+  "current_status": "failed",
+  "attempt": 2,
+  "error_info": {
+    "error_type": "TIMEOUT",
+    "message": "LLM analysis tool exceeded timeout",
+    "retryable": true
+  },
+  "metrics": {
+    "latency_ms": 120000,
+    "cost_usd": 0.04,
+    "tokens_used": 3500
+  },
+  "policy_decision_ref": "pol-tool-009",
+  "safe_summary": "Task task-02 failed due to timeout after second attempt.",
+  "created_at": "2026-06-24T10:15:00Z"
+}
+```
+
+---
+
+# 6. `SupervisorDecision`
+
+## Purpose
+
+This is emitted by **Supervisor → Orchestrator / Planner / Memory**.
+
+It tells the system:
+
+```text
+What should happen next?
+Continue?
+Retry?
+Pause?
+Replan?
+Escalate?
+Stop?
+```
+
+## Should contain
+
+| Field                     | Meaning                              |
+| ------------------------- | ------------------------------------ |
+| `decision_id`             | Unique decision ID                   |
+| `run_id`                  | Current run                          |
+| `plan_id`                 | Current plan                         |
+| `task_id`                 | Affected task                        |
+| `decision_type`           | continue/retry/replan/escalate/stop  |
+| `decision_reason`         | Explainable reason                   |
+| `confidence`              | Supervisor confidence                |
+| `trigger_checkpoint_id`   | Checkpoint that caused this decision |
+| `failure_analysis`        | Failure details                      |
+| `policy_decision_ref`     | Governance approval reference        |
+| `next_action`             | What Orchestrator/Planner should do  |
+| `replan_required`         | Boolean                              |
+| `escalation_required`     | Boolean                              |
+| `human_approval_required` | Boolean                              |
+| `safe_summary`            | Audit-safe explanation               |
+
+## Example
+
+```json
+{
+  "contract_version": "1.0.0",
+  "decision_id": "sup-dec-001",
+  "correlation_id": "corr-123",
+  "run_id": "run-001",
+  "plan_id": "plan-001",
+  "task_id": "task-02",
+  "trigger_checkpoint_id": "chk-001",
+  "decision_type": "retry",
+  "decision_reason": "Task failed due to retryable timeout and retry count is still within policy limit.",
+  "confidence": 0.86,
+  "failure_analysis": {
+    "failure_type": "TIMEOUT",
+    "retryable": true,
+    "attempts_used": 2,
+    "max_retries": 3
+  },
+  "policy_decision_ref": "pol-sup-001",
+  "next_action": {
+    "target_component": "orchestrator",
+    "action": "retry_task",
+    "task_id": "task-02"
+  },
+  "replan_required": false,
+  "escalation_required": false,
+  "human_approval_required": false,
+  "safe_summary": "Supervisor approved one more retry for task-02."
+}
+```
+
+---
+
+# 7. `ReplanRequest`
+
+## Purpose
+
+This is emitted by **Supervisor → Planner**.
+
+It tells the Planner:
+
+```text
+The current plan cannot continue safely/effectively.
+Create a revised plan using current state, failure reason, and constraints.
+```
+
+## Should contain
+
+| Field                     | Meaning                                               |
+| ------------------------- | ----------------------------------------------------- |
+| `replan_request_id`       | Unique replan request                                 |
+| `run_id`                  | Current run                                           |
+| `old_plan_id`             | Existing plan                                         |
+| `old_plan_version`        | Existing version                                      |
+| `trigger_reason`          | Why replan is needed                                  |
+| `failed_task_id`          | Task that caused replan                               |
+| `current_state_refs`      | Checkpoint/run state refs                             |
+| `partial_outputs`         | Outputs that can be reused                            |
+| `constraints_to_preserve` | Budget, policy, approvals, deadlines                  |
+| `policy_constraints`      | Governance constraints                                |
+| `memory_refs`             | Relevant memory/history                               |
+| `requested_change_type`   | Replace task / add task / change tool / simplify plan |
+| `deadline`                | Optional                                              |
+| `requested_by`            | Supervisor/service                                    |
+
+## Example
+
+```json
+{
+  "contract_version": "1.0.0",
+  "replan_request_id": "replan-001",
+  "correlation_id": "corr-123",
+  "run_id": "run-001",
+  "old_plan_id": "plan-001",
+  "old_plan_version": 1,
+  "trigger_reason": "Repeated tool timeout",
+  "failed_task_id": "task-02",
+  "trigger_checkpoint_id": "chk-001",
+  "supervisor_decision_ref": "sup-dec-002",
+  "current_state_refs": ["chk-001", "run-state-001"],
+  "partial_outputs": [
+    {
+      "task_id": "task-01",
+      "output_ref": "artifact-invoice-records-001",
+      "reuse_allowed": true
+    }
+  ],
+  "constraints_to_preserve": {
+    "max_cost_usd_remaining": 1.2,
+    "data_classification": "confidential",
+    "allowed_tools": ["sap_invoice_api", "local_llm_analysis_tool"]
+  },
+  "policy_constraints": {
+    "external_llm_blocked": true,
+    "human_approval_required_for_report_send": true
+  },
+  "requested_change_type": "replace_failed_tool",
+  "requested_by": "supervisor"
+}
+```
+
+---
+
+# 8. `PolicyDecision`
+
+## Purpose
+
+This is emitted by **Governance → Control Plane**.
+
+It tells Planner, Orchestrator, or Supervisor:
+
+```text
+Allowed?
+Denied?
+Approval required?
+Escalate?
+Stop?
+What rules were applied?
+```
+
+## Should contain
+
+| Field                   | Meaning                                          |
+| ----------------------- | ------------------------------------------------ |
+| `policy_decision_id`    | Unique decision                                  |
+| `policy_version`        | Version of policy applied                        |
+| `decision_scope`        | request/plan/task/tool/runtime/supervisor        |
+| `decision`              | allow/deny/approve_required/escalate/stop        |
+| `risk_level`            | low/medium/high/restricted                       |
+| `reason_codes`          | Machine-readable reasons                         |
+| `human_readable_reason` | Safe explanation                                 |
+| `required_controls`     | Redaction, approval, audit, local-only execution |
+| `blocked_actions`       | Actions not allowed                              |
+| `approval_requirements` | Required approvals                               |
+| `expires_at`            | Decision validity                                |
+| `audit_required`        | Boolean                                          |
+
+## Example
+
+```json
+{
+  "contract_version": "1.0.0",
+  "policy_decision_id": "pol-tool-009",
+  "correlation_id": "corr-123",
+  "policy_version": "gov-r1-v0.1",
+  "decision_scope": "tool_call",
+  "decision": "approval_required",
+  "allowed": false,
+  "risk_level": "high",
+  "reason_codes": [
+    "CONFIDENTIAL_DATA",
+    "EXTERNAL_LLM_USAGE"
+  ],
+  "human_readable_reason": "Human approval is required before confidential data can be sent to this tool.",
+  "required_controls": [
+    "redact_pii",
+    "human_approval",
+    "audit_logging"
+  ],
+  "blocked_actions": [
+    "send_raw_customer_data"
+  ],
+  "approval_requirements": [
+    {
+      "approval_type": "human",
+      "approver_role": "data_steward"
+    }
+  ],
+  "audit_required": true,
+  "expires_at": "2026-06-24T12:00:00Z"
+}
+```
+
+---
+
+# 9. `MemoryRecord`
+
+## Purpose
+
+This is emitted by **Memory → Control Plane**.
+
+It tells Planner, Orchestrator, or Supervisor:
+
+```text
+Here is relevant past context, state, checkpoint, plan, SOP, failure pattern, or execution history.
+```
+
+## Should contain
+
+| Field                 | Meaning                                         |
+| --------------------- | ----------------------------------------------- |
+| `memory_id`           | Unique memory record                            |
+| `memory_type`         | working/episodic/semantic/checkpoint/procedural |
+| `namespace`           | tenant/user/workflow/run/task                   |
+| `title`               | Short label                                     |
+| `content_summary`     | Safe summary                                    |
+| `content_ref`         | Pointer to full content/artifact                |
+| `source`              | SOP, checkpoint, prior plan, user input         |
+| `confidence`          | Retrieval confidence                            |
+| `created_at`          | Creation time                                   |
+| `expires_at`          | TTL                                             |
+| `access_policy`       | Who can use it                                  |
+| `data_classification` | Sensitivity                                     |
+| `allowed_for_prompt`  | Can be inserted into LLM prompt?                |
+| `safe_to_replay`      | Can be used in replay/debug?                    |
+| `policy_decision_ref` | Governance filter result                        |
+
+## Example
+
+```json
+{
+  "contract_version": "1.0.0",
+  "memory_id": "mem-101",
+  "correlation_id": "corr-123",
+  "tenant_id": "tenant-a",
+  "memory_type": "semantic",
+  "namespace": "tenant-a.finance.sop",
+  "title": "Invoice reconciliation SOP",
+  "content_summary": "Approved process for matching invoices, purchase orders, and payment records.",
+  "content_ref": "s3://memory-store/sop/invoice-reconciliation-v3",
+  "source": "enterprise_sop",
+  "confidence": 0.91,
+  "data_classification": "internal",
+  "access_policy": {
+    "allowed_roles": ["finance_user", "finance_manager"],
+    "allowed_components": ["planner", "supervisor"]
+  },
+  "allowed_for_prompt": true,
+  "safe_to_replay": true,
+  "policy_decision_ref": "pol-memory-001",
+  "created_at": "2026-05-01T09:00:00Z",
+  "expires_at": null
+}
+```
+
+---
+
+# 10. Additional supporting contracts you should also define
+
+The 8 main contracts are enough for Release 1, but practically you should also define these smaller reusable objects.
+
+| Supporting Contract   | Used Inside                  | Purpose                           |
+| --------------------- | ---------------------------- | --------------------------------- |
+| `UserContext`         | `RequestEnvelope`            | User role, tenant, permissions    |
+| `GovernanceContext`   | All major contracts          | Risk, policy, data classification |
+| `ToolSpec`            | `TaskNode`                   | Tool/API/agent metadata           |
+| `RetryPolicy`         | `TaskNode`                   | Retry limits and backoff          |
+| `ApprovalRequirement` | `TaskNode`, `PolicyDecision` | Human approval details            |
+| `EvidenceRequirement` | `TaskNode`                   | Required evidence/citation/output |
+| `ErrorInfo`           | `StateCheckpoint`            | Standard error representation     |
+| `RuntimeMetrics`      | `StateCheckpoint`            | Latency, cost, token usage        |
+| `ArtifactRef`         | Plan/checkpoint/memory       | Pointer to files, outputs, docs   |
+| `SafeSummary`         | All audit-facing records     | Reasoning-safe summary            |
+
+---
+
+# 11. How the contracts connect
+
+```text
+RequestEnvelope
+      ↓
+Planner
+      ↓
+ExecutionPlan
+      ↓
+TaskNode[]
+      ↓
+Orchestrator
+      ↓
+StateCheckpoint
+      ↓
+Supervisor
+      ↓
+SupervisorDecision
+      ↓
+Retry / Continue / Replan / Escalate / Stop
+      ↓
+ReplanRequest, if needed
+      ↓
+Planner creates new ExecutionPlan version
+```
+
+Parallel contracts:
+
+```text
+Governance → PolicyDecision
+Memory     → MemoryRecord
+```
+
+These two are used throughout the full flow.
+
+---
+
+# 12. Release 1 minimum contract set
+
+For Release 1, do not overcomplicate. Freeze a **v0.1** schema with these mandatory fields.
+
+| Contract             | Must-Have Fields                                                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `RequestEnvelope`    | `request_id`, `user_query`, `tenant_id`, `user_context`, `request_type`, `constraints`, `data_classification`                        |
+| `ExecutionPlan`      | `plan_id`, `plan_version`, `request_id`, `task_nodes`, `edges`, `global_constraints`, `policy_decision_ref`                          |
+| `TaskNode`           | `task_id`, `task_type`, `tool`, `dependencies`, `input_refs`, `output_contract`, `timeout_seconds`, `retry_policy`, `risk_level`     |
+| `StateCheckpoint`    | `checkpoint_id`, `run_id`, `plan_id`, `task_id`, `checkpoint_type`, `status`, `attempt`, `metrics`, `safe_summary`                   |
+| `SupervisorDecision` | `decision_id`, `run_id`, `task_id`, `decision_type`, `decision_reason`, `next_action`, `policy_decision_ref`                         |
+| `ReplanRequest`      | `replan_request_id`, `old_plan_id`, `trigger_reason`, `failed_task_id`, `current_state_refs`, `constraints_to_preserve`              |
+| `PolicyDecision`     | `policy_decision_id`, `decision_scope`, `decision`, `risk_level`, `reason_codes`, `required_controls`, `policy_version`              |
+| `MemoryRecord`       | `memory_id`, `memory_type`, `namespace`, `content_summary`, `content_ref`, `confidence`, `data_classification`, `allowed_for_prompt` |
+
+---
+
+# 13. Final summary
+
+The contracts will contain:
+
+```text
+1. Identity fields
+   request_id, plan_id, task_id, run_id, checkpoint_id
+
+2. Traceability fields
+   correlation_id, timestamp, source_component, trace_context
+
+3. Governance fields
+   risk_level, data_classification, policy_decision_ref, approval_required
+
+4. Runtime fields
+   status, attempt, timeout, retry_policy, metrics
+
+5. Memory fields
+   memory_refs, artifact_refs, content_summary, run history references
+
+6. Execution fields
+   tool, agent, dependencies, input_refs, output_contract
+
+7. Decision fields
+   decision_type, reason_codes, next_action, escalation/replan flags
+```
+
+The most important thing: **these contracts should become your first technical design artifact before implementation begins**.
+
+Recommended document section name:
+
+> **Release 1 Contract Model and Interface Schemas**
+
+And inside that section, define:
+
+```text
+RequestEnvelope
+ExecutionPlan
+TaskNode
+StateCheckpoint
+SupervisorDecision
+ReplanRequest
+PolicyDecision
+MemoryRecord
+Supporting Common Schemas
+Validation Rules
+Schema Versioning Rules
+Example Payloads
+```
